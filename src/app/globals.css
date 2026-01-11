@@ -12,15 +12,51 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Force light mode - disable dark mode */
+body {
+  background: #f8fafc;
+  color: #1f2937;
+  font-family: Arial, Helvetica, sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Ensure all inputs have black text */
+input, textarea, select {
+  color: #1f2937 !important;
+  background-color: #ffffff !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #9ca3af !important;
+}
+
+/* Override any gray text to be darker */
+.text-gray-400 {
+  color: #6b7280 !important;
+}
+
+.text-gray-500 {
+  color: #374151 !important;
+}
+
+.text-gray-600 {
+  color: #1f2937 !important;
+}
+
+/* Ensure text in cards is visible */
+p, span, label {
+  color: inherit;
+}
+
+/* Strong black for important text */
+h1, h2, h3, h4, h5, h6 {
+  color: #111827;
+}
+
+/* Table text */
+table {
+  color: #1f2937;
+}
+
+td, th {
+  color: #1f2937;
 }
