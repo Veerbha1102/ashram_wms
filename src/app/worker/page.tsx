@@ -26,6 +26,10 @@ export default function WorkerDashboard() {
     const [earlyExitApproved, setEarlyExitApproved] = useState(false);
     const [taskStats, setTaskStats] = useState({ total: 0, completed: 0 });
 
+    // Kiosk Check
+    const [isKioskDevice, setIsKioskDevice] = useState(true);
+    const [kioskError, setKioskError] = useState('');
+
     // Modals
     const [showEarlyExitModal, setShowEarlyExitModal] = useState(false);
     const [earlyExitReason, setEarlyExitReason] = useState('');
@@ -34,6 +38,7 @@ export default function WorkerDashboard() {
 
     useEffect(() => {
         loadWorkerData();
+        checkKioskDevice();
     }, []);
 
     // Timer
@@ -66,6 +71,31 @@ export default function WorkerDashboard() {
         lateTime.setHours(9, 30, 0, 0);
         setIsLate(now > lateTime && workState === 'NOT_STARTED');
     }, [workState]);
+
+    async function checkKioskDevice() {
+        // Get this device's fingerprint
+        let deviceId = localStorage.getItem('aakb_device_fingerprint');
+        if (!deviceId) {
+            deviceId = `KIOSK-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            localStorage.setItem('aakb_device_fingerprint', deviceId);
+        }
+
+        // Check if there's a registered kiosk
+        const { data } = await supabase
+            .from('settings')
+            .select('value')
+            .eq('key', 'kiosk_device_id')
+            .single();
+
+        if (data?.value) {
+            // There's a registered kiosk - check if this is it
+            if (data.value !== deviceId) {
+                setIsKioskDevice(false);
+                setKioskError('You can only start your day from the office kiosk computer.');
+            }
+        }
+        // If no kiosk registered, allow from any device
+    }
 
     async function loadWorkerData() {
         const token = localStorage.getItem('aakb_device_token');
@@ -112,6 +142,13 @@ export default function WorkerDashboard() {
 
     async function handleStartDay() {
         if (!worker) return;
+
+        // Check kiosk before starting
+        if (!isKioskDevice) {
+            alert('❌ ' + kioskError);
+            return;
+        }
+
         const now = new Date();
         setStartTime(now);
         setWorkState('WORKING');
@@ -201,12 +238,27 @@ export default function WorkerDashboard() {
                             <p className="text-red-600 font-medium">⚠️ You are starting late. Please inform Swamiji.</p>
                         </div>
                     )}
+
+                    {!isKioskDevice && (
+                        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                            <p className="text-orange-700 font-medium">🖥️ {kioskError}</p>
+                            <p className="text-sm text-orange-600 mt-1">Please go to the office desktop to start your day.</p>
+                        </div>
+                    )}
+
                     <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
                         <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center text-4xl">🙏</div>
                         <h2 className="text-xl font-bold text-gray-800 mb-2">Ready to Start?</h2>
                         <p className="text-gray-500 text-sm mb-6">Tap below to begin your day</p>
-                        <button onClick={handleStartDay} className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xl font-bold rounded-2xl shadow-lg active:scale-95 transition">
-                            ▶️ START DAY
+                        <button
+                            onClick={handleStartDay}
+                            disabled={!isKioskDevice}
+                            className={`w-full py-4 text-white text-xl font-bold rounded-2xl shadow-lg active:scale-95 transition ${isKioskDevice
+                                    ? 'bg-gradient-to-r from-green-500 to-emerald-500'
+                                    : 'bg-gray-400 cursor-not-allowed'
+                                }`}
+                        >
+                            {isKioskDevice ? '▶️ START DAY' : '🔒 Go to Office Kiosk'}
                         </button>
                     </div>
                 </div>
@@ -316,7 +368,7 @@ export default function WorkerDashboard() {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
                         <h3 className="text-lg font-bold text-gray-800 mb-4">Request Early Exit</h3>
-                        <textarea value={earlyExitReason} onChange={(e) => setEarlyExitReason(e.target.value)} placeholder="Why do you need to leave early?" className="w-full p-3 border border-gray-200 rounded-xl mb-4 min-h-[100px]" />
+                        <textarea value={earlyExitReason} onChange={(e) => setEarlyExitReason(e.target.value)} placeholder="Why do you need to leave early?" className="w-full p-3 border border-gray-200 rounded-xl mb-4 min-h-[100px] text-gray-900" />
                         <div className="flex gap-3">
                             <button onClick={() => setShowEarlyExitModal(false)} className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl">Cancel</button>
                             <button onClick={requestEarlyExit} className="flex-1 py-3 bg-orange-500 text-white font-semibold rounded-xl">Send Request</button>

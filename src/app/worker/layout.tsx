@@ -1,8 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase';
 
 const sidebarLinks = [
     { href: '/worker', icon: '🏠', label: 'Dashboard' },
@@ -14,12 +15,81 @@ const sidebarLinks = [
 
 export default function WorkerLayout({ children }: { children: React.ReactNode }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const [isKioskDevice, setIsKioskDevice] = useState<boolean | null>(null);
+    const [loading, setLoading] = useState(true);
     const pathname = usePathname();
     const router = useRouter();
+    const supabase = createClient();
+
+    useEffect(() => {
+        checkKioskDevice();
+    }, []);
+
+    async function checkKioskDevice() {
+        // Get this device's fingerprint
+        let deviceId = localStorage.getItem('aakb_device_fingerprint');
+        if (!deviceId) {
+            deviceId = `KIOSK-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            localStorage.setItem('aakb_device_fingerprint', deviceId);
+        }
+
+        // Check if there's a registered kiosk
+        const { data } = await supabase
+            .from('settings')
+            .select('value')
+            .eq('key', 'kiosk_device_id')
+            .single();
+
+        if (data?.value) {
+            // There's a registered kiosk - check if this is it
+            setIsKioskDevice(data.value === deviceId);
+        } else {
+            // No kiosk registered - allow from any device
+            setIsKioskDevice(true);
+        }
+        setLoading(false);
+    }
 
     function handleLogout() {
         localStorage.removeItem('aakb_device_token');
         router.push('/login');
+    }
+
+    // Show loading while checking kiosk
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="animate-spin w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full"></div>
+            </div>
+        );
+    }
+
+    // Block access if not on kiosk
+    if (isKioskDevice === false) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+                    <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center text-4xl">
+                        🖥️
+                    </div>
+                    <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Restricted</h1>
+                    <p className="text-gray-600 mb-6">
+                        Workers can only access the system from the <strong>office desktop</strong>.
+                    </p>
+                    <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6">
+                        <p className="text-orange-700 text-sm">
+                            📍 Please go to the Ashram office and use the registered kiosk computer to access your dashboard.
+                        </p>
+                    </div>
+                    <button
+                        onClick={handleLogout}
+                        className="w-full py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl"
+                    >
+                        🚪 Logout
+                    </button>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -55,6 +125,9 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
                 </nav>
 
                 <div className="p-4 border-t border-gray-100">
+                    <div className="bg-green-50 rounded-lg p-3 mb-3 text-xs text-green-700">
+                        ✅ Office Kiosk Verified
+                    </div>
                     <button
                         onClick={handleLogout}
                         className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl transition"
