@@ -184,6 +184,13 @@ export default function SwamijiDashboard() {
     const tasksPending = tasks.filter(t => t.status !== 'completed').length;
     const workerStatus = getWorkerStatus();
 
+    // Check if worker is late (after 9:30 AM and not started)
+    const now = new Date();
+    const lateTime = new Date();
+    lateTime.setHours(9, 30, 0, 0);
+    const isWorkerLate = now > lateTime && !attendance?.check_in_time;
+    const minutesLate = isWorkerLate ? Math.floor((now.getTime() - lateTime.getTime()) / (1000 * 60)) : 0;
+
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -216,6 +223,37 @@ export default function SwamijiDashboard() {
             </header>
 
             <main className="max-w-4xl mx-auto p-4 space-y-6">
+                {/* LATE NOTIFICATION */}
+                {isWorkerLate && (
+                    <div className="bg-red-500 text-white rounded-2xl p-6 shadow-lg">
+                        <div className="flex items-start gap-4">
+                            <div className="text-4xl">⏰</div>
+                            <div className="flex-1">
+                                <h3 className="text-xl font-bold mb-1">Worker is LATE!</h3>
+                                <p className="text-red-100 mb-2">{worker?.name} has not started work today</p>
+                                <p className="bg-white/20 rounded-lg px-3 py-2 text-sm mb-4 inline-block">
+                                    {minutesLate} minutes late (Expected: 9:30 AM)
+                                </p>
+                                <div className="flex gap-3">
+                                    <a
+                                        href={`tel:${worker?.phone}`}
+                                        className="px-6 py-2 bg-white text-red-600 font-bold rounded-xl"
+                                    >
+                                        📞 CALL NOW
+                                    </a>
+                                    <a
+                                        href={`https://wa.me/91${worker?.phone?.replace(/\D/g, '')}?text=${encodeURIComponent('Hari Om. You have not started work yet. Please come to office immediately.')}`}
+                                        target="_blank"
+                                        className="px-6 py-2 bg-red-600 text-white font-bold rounded-xl"
+                                    >
+                                        💬 WhatsApp
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Early Exit Request Alert */}
                 {attendance?.early_exit_requested && !attendance?.early_exit_approved && (
                     <div className="bg-orange-500 text-white rounded-2xl p-6 shadow-lg animate-pulse">
