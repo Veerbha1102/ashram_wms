@@ -12,6 +12,7 @@ export default function AdminSettingsPage() {
         default_work_hours: 8,
         late_time: '09:30',
         require_kiosk: true,
+        emergency_contact: '',
     });
 
     useEffect(() => {
@@ -20,7 +21,6 @@ export default function AdminSettingsPage() {
     }, []);
 
     function generateDeviceId() {
-        // Generate a unique device fingerprint
         let deviceId = localStorage.getItem('aakb_device_fingerprint');
         if (!deviceId) {
             deviceId = `KIOSK-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -30,23 +30,44 @@ export default function AdminSettingsPage() {
     }
 
     async function loadSettings() {
-        // Try to get existing kiosk registration
-        const { data } = await supabase
+        // Load kiosk registration
+        const { data: kioskData } = await supabase
             .from('settings')
             .select('*')
             .eq('key', 'kiosk_device_id')
             .single();
 
-        if (data?.value) {
-            setRegisteredDeviceId(data.value);
+        if (kioskData?.value) {
+            setRegisteredDeviceId(kioskData.value);
         }
+
+        // Load emergency contact
+        const { data: contactData } = await supabase
+            .from('settings')
+            .select('value')
+            .eq('key', 'emergency_contact')
+            .single();
+
+        if (contactData?.value) {
+            setSettings(s => ({ ...s, emergency_contact: contactData.value }));
+        }
+
+        // Load late time
+        const { data: lateData } = await supabase
+            .from('settings')
+            .select('value')
+            .eq('key', 'late_time')
+            .single();
+
+        if (lateData?.value) {
+            setSettings(s => ({ ...s, late_time: lateData.value }));
+        }
+
         setLoading(false);
     }
 
     async function registerThisDevice() {
         setSaving(true);
-
-        // Save this device as the kiosk
         await supabase.from('settings').upsert({
             key: 'kiosk_device_id',
             value: currentDeviceId,
@@ -66,6 +87,27 @@ export default function AdminSettingsPage() {
         alert('Kiosk registration removed. Workers can start from any device.');
     }
 
+    async function saveSettings() {
+        setSaving(true);
+
+        // Save emergency contact
+        await supabase.from('settings').upsert({
+            key: 'emergency_contact',
+            value: settings.emergency_contact,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'key' });
+
+        // Save late time
+        await supabase.from('settings').upsert({
+            key: 'late_time',
+            value: settings.late_time,
+            updated_at: new Date().toISOString()
+        }, { onConflict: 'key' });
+
+        setSaving(false);
+        alert('✅ Settings saved!');
+    }
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -81,6 +123,54 @@ export default function AdminSettingsPage() {
             <div>
                 <h1 className="text-2xl font-bold text-gray-900">⚙️ Settings</h1>
                 <p className="text-gray-600">Configure system settings</p>
+            </div>
+
+            {/* Emergency Contact */}
+            <div className="bg-white rounded-xl shadow p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">📞 Emergency Contact</h2>
+                <p className="text-gray-600 mb-4">
+                    This phone number will be used for "Call Now" and "WhatsApp" buttons in Swamiji dashboard when worker is late.
+                </p>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-800 mb-2">Phone Number</label>
+                        <input
+                            type="tel"
+                            value={settings.emergency_contact}
+                            onChange={(e) => setSettings({ ...settings, emergency_contact: e.target.value })}
+                            className="w-full p-3 border border-gray-300 rounded-xl text-gray-900"
+                            placeholder="e.g., 9876543210"
+                        />
+                    </div>
+                    <div className="flex items-end">
+                        <button
+                            onClick={saveSettings}
+                            disabled={saving}
+                            className="px-6 py-3 bg-green-500 text-white font-semibold rounded-xl disabled:opacity-50"
+                        >
+                            {saving ? 'Saving...' : '💾 Save Contact'}
+                        </button>
+                    </div>
+                </div>
+
+                {settings.emergency_contact && (
+                    <div className="mt-4 flex gap-2">
+                        <a
+                            href={`tel:${settings.emergency_contact}`}
+                            className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm"
+                        >
+                            📞 Test Call
+                        </a>
+                        <a
+                            href={`https://wa.me/91${settings.emergency_contact.replace(/\D/g, '')}`}
+                            target="_blank"
+                            className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm"
+                        >
+                            💬 Test WhatsApp
+                        </a>
+                    </div>
+                )}
             </div>
 
             {/* Kiosk Registration */}
@@ -165,13 +255,21 @@ export default function AdminSettingsPage() {
                         />
                     </div>
                 </div>
+
+                <button
+                    onClick={saveSettings}
+                    disabled={saving}
+                    className="mt-4 px-6 py-3 bg-blue-500 text-white font-semibold rounded-xl disabled:opacity-50"
+                >
+                    {saving ? 'Saving...' : '💾 Save Settings'}
+                </button>
             </div>
 
             {/* How It Works */}
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
                 <h3 className="font-semibold text-blue-800 mb-2">ℹ️ How Kiosk Mode Works</h3>
                 <ul className="text-sm text-blue-700 space-y-1">
-                    <li>• Workers can <strong>login from any device</strong> to view tasks and history</li>
+                    <li>• Workers can <strong>login from any device</strong> to view tasks, request leave, and view history</li>
                     <li>• But <strong>"Start Day" only works</strong> on the registered kiosk</li>
                     <li>• After starting, they can continue from their mobile/other devices</li>
                     <li>• This ensures workers are physically present at the ashram to check in</li>

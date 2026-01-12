@@ -7,14 +7,16 @@ interface LeaveRequest {
     worker_id: string;
     worker_name: string;
     worker_phone: string;
+    leave_type: string;
     start_date: string;
     end_date: string;
     reason: string;
     status: 'pending' | 'approved' | 'rejected';
+    rejection_reason: string | null;
     created_at: string;
 }
 
-export default function LeavesPage() {
+export default function AdminLeavesPage() {
     const supabase = createClient();
     const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
     const [loading, setLoading] = useState(true);
@@ -32,8 +34,9 @@ export default function LeavesPage() {
             .select('id, name, phone')
             .eq('role', 'worker');
 
+        // Use 'leaves' table (same as Swamiji and Worker pages)
         const { data: leavesData } = await supabase
-            .from('leave_requests')
+            .from('leaves')
             .select('*')
             .order('created_at', { ascending: false });
 
@@ -51,11 +54,18 @@ export default function LeavesPage() {
     }
 
     async function updateStatus(leaveId: string, status: 'approved' | 'rejected') {
-        await supabase.from('leave_requests').update({
+        const updateData: { status: string; approved_at?: string; rejection_reason?: string } = {
             status,
-            approved_at: new Date().toISOString(),
-        }).eq('id', leaveId);
+        };
 
+        if (status === 'approved') {
+            updateData.approved_at = new Date().toISOString();
+        } else if (status === 'rejected') {
+            const reason = prompt('Reason for rejection (optional):');
+            if (reason) updateData.rejection_reason = reason;
+        }
+
+        await supabase.from('leaves').update(updateData).eq('id', leaveId);
         loadLeaves();
     }
 
@@ -65,6 +75,15 @@ export default function LeavesPage() {
         const startDate = new Date(start);
         const endDate = new Date(end);
         return Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    }
+
+    function getLeaveTypeIcon(type: string) {
+        switch (type) {
+            case 'sick': return '🤒';
+            case 'emergency': return '🚨';
+            case 'casual': return '🏖️';
+            default: return '📅';
+        }
     }
 
     return (
@@ -130,6 +149,8 @@ export default function LeavesPage() {
                                             <p className="font-medium text-gray-800">{leave.worker_name}</p>
                                             <p className="text-xs text-gray-400">{leave.worker_phone}</p>
                                         </div>
+                                        <span className="text-xl ml-2">{getLeaveTypeIcon(leave.leave_type)}</span>
+                                        <span className="text-xs bg-gray-100 px-2 py-1 rounded capitalize">{leave.leave_type}</span>
                                     </div>
 
                                     <div className="bg-gray-50 rounded-lg p-3 mt-3">
@@ -139,12 +160,18 @@ export default function LeavesPage() {
                                         </div>
                                         <p className="text-gray-700">{leave.reason || 'No reason provided'}</p>
                                     </div>
+
+                                    {leave.rejection_reason && (
+                                        <div className="bg-red-50 rounded-lg p-3 mt-2">
+                                            <p className="text-sm text-red-700"><strong>Rejection reason:</strong> {leave.rejection_reason}</p>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="flex flex-col gap-2">
                                     <span className={`px-3 py-1 rounded-full text-sm font-medium text-center ${leave.status === 'approved' ? 'bg-green-100 text-green-700' :
-                                            leave.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                                                'bg-orange-100 text-orange-700'
+                                        leave.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                                            'bg-orange-100 text-orange-700'
                                         }`}>
                                         {leave.status}
                                     </span>

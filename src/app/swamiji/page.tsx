@@ -40,6 +40,8 @@ export default function SwamijiDashboard() {
     const [attendance, setAttendance] = useState<Attendance | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
+    const [hasApprovedLeave, setHasApprovedLeave] = useState(false);
+    const [emergencyContact, setEmergencyContact] = useState<string | null>(null);
 
     // For tracking changes to show notifications
     const [prevAttendance, setPrevAttendance] = useState<Attendance | null>(null);
@@ -175,6 +177,27 @@ export default function SwamijiDashboard() {
                     .gte('date', sevenDaysAgo.toISOString().split('T')[0])
                     .order('date', { ascending: false });
                 setRecentAttendance(recentAtt || []);
+
+                // Check if worker has approved leave today
+                const { data: leaveData } = await supabase
+                    .from('leaves')
+                    .select('status')
+                    .eq('worker_id', w.id)
+                    .eq('status', 'approved')
+                    .lte('start_date', today)
+                    .gte('end_date', today)
+                    .limit(1);
+                setHasApprovedLeave((leaveData || []).length > 0);
+            }
+
+            // Load emergency contact from settings
+            const { data: contactSetting } = await supabase
+                .from('settings')
+                .select('value')
+                .eq('key', 'emergency_contact')
+                .single();
+            if (contactSetting?.value) {
+                setEmergencyContact(contactSetting.value);
             }
         } catch (err) {
             console.error('Error loading data:', err);
@@ -253,12 +276,24 @@ export default function SwamijiDashboard() {
     const tasksPending = tasks.filter(t => t.status !== 'completed').length;
     const workerStatus = getWorkerStatus();
 
-    // Check if worker is late (after 9:30 AM and not started)
+    // Check if worker is late (after 9:30 AM and not started) - but not if on approved leave
     const now = new Date();
     const lateTime = new Date();
     lateTime.setHours(9, 30, 0, 0);
-    const isWorkerLate = now > lateTime && !attendance?.check_in_time;
+    const isWorkerLate = now > lateTime && !attendance?.check_in_time && !hasApprovedLeave;
     const minutesLate = isWorkerLate ? Math.floor((now.getTime() - lateTime.getTime()) / (1000 * 60)) : 0;
+
+    // Smart time formatting - show hours/days when appropriate
+    function formatLateTime(mins: number): string {
+        if (mins < 60) return `${mins} minutes`;
+        const hours = Math.floor(mins / 60);
+        const remainingMins = mins % 60;
+        if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ${remainingMins > 0 ? remainingMins + ' min' : ''}`;
+        const days = Math.floor(hours / 24);
+        return `${days} day${days > 1 ? 's' : ''}`;
+    }
+
+    const contactPhone = emergencyContact || worker?.phone;
 
     if (loading) {
         return (
@@ -301,17 +336,17 @@ export default function SwamijiDashboard() {
                                 <h3 className="text-xl font-bold mb-1">Worker is LATE!</h3>
                                 <p className="text-red-100 mb-2">{worker?.name} has not started work today</p>
                                 <p className="bg-white/20 rounded-lg px-3 py-2 text-sm mb-4 inline-block">
-                                    {minutesLate} minutes late (Expected: 9:30 AM)
+                                    {formatLateTime(minutesLate)} late (Expected: 9:30 AM)
                                 </p>
                                 <div className="flex gap-3">
                                     <a
-                                        href={`tel:${worker?.phone}`}
+                                        href={`tel:${contactPhone}`}
                                         className="px-6 py-2 bg-white text-red-600 font-bold rounded-xl"
                                     >
                                         📞 CALL NOW
                                     </a>
                                     <a
-                                        href={`https://wa.me/91${worker?.phone?.replace(/\D/g, '')}?text=${encodeURIComponent('Hari Om. You have not started work yet. Please come to office immediately.')}`}
+                                        href={`https://wa.me/91${contactPhone?.replace(/\D/g, '')}?text=${encodeURIComponent('Hari Om. You have not started work yet. Please come to office immediately.')}`}
                                         target="_blank"
                                         className="px-6 py-2 bg-red-600 text-white font-bold rounded-xl"
                                     >
