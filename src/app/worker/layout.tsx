@@ -5,30 +5,29 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
 
-const sidebarLinks = [
-    { href: '/worker', icon: '🏠', label: 'Dashboard', kioskOnly: true },
-    { href: '/worker/tasks', icon: '📋', label: 'My Tasks', kioskOnly: false },
-    { href: '/worker/history', icon: '📅', label: 'Attendance History', kioskOnly: false },
-    { href: '/worker/leave', icon: '🏖️', label: 'Request Leave', kioskOnly: false },
-    { href: '/worker/profile', icon: '👤', label: 'My Profile', kioskOnly: false },
+const navItems = [
+    { href: '/worker', icon: '🏠', label: 'Home', kioskOnly: true },
+    { href: '/worker/tasks', icon: '📋', label: 'Tasks', kioskOnly: false },
+    { href: '/worker/leave', icon: '🏖️', label: 'Leave', kioskOnly: false },
+    { href: '/worker/history', icon: '📅', label: 'History', kioskOnly: false },
+    { href: '/worker/profile', icon: '👤', label: 'Profile', kioskOnly: false },
 ];
 
-// Pages that can be accessed from phone
 const phoneAllowedPages = ['/worker/tasks', '/worker/history', '/worker/leave', '/worker/profile'];
 
 export default function WorkerLayout({ children }: { children: React.ReactNode }) {
-    const [sidebarOpen, setSidebarOpen] = useState(false);
     const [isKioskDevice, setIsKioskDevice] = useState<boolean | null>(null);
     const [loading, setLoading] = useState(true);
+    const [overdueCount, setOverdueCount] = useState(0);
     const pathname = usePathname();
     const router = useRouter();
     const supabase = createClient();
 
-    // Check if current page is phone-allowed
     const isPhoneAllowedPage = phoneAllowedPages.some(p => pathname.startsWith(p));
 
     useEffect(() => {
         checkKioskDevice();
+        loadBadges();
     }, []);
 
     async function checkKioskDevice() {
@@ -50,6 +49,28 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
             setIsKioskDevice(true);
         }
         setLoading(false);
+    }
+
+    async function loadBadges() {
+        const token = localStorage.getItem('aakb_device_token');
+        if (!token) return;
+
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('device_token', token)
+            .single();
+
+        if (profile) {
+            const today = new Date().toISOString().split('T')[0];
+            const { count } = await supabase
+                .from('tasks')
+                .select('*', { count: 'exact', head: true })
+                .eq('assigned_to', profile.id)
+                .neq('status', 'completed')
+                .lt('due_date', today);
+            setOverdueCount(count || 0);
+        }
     }
 
     function handleLogout() {
@@ -78,9 +99,7 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
                         To <strong>Start/End Day</strong>, use the <strong>office desktop</strong>.
                     </p>
                     <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
-                        <p className="text-green-700 text-sm font-medium">
-                            📱 You can still access from your phone:
-                        </p>
+                        <p className="text-green-700 text-sm font-medium">📱 You can access from phone:</p>
                         <ul className="text-sm text-green-600 mt-2 space-y-1">
                             <li>• View and complete tasks</li>
                             <li>• Request leave</li>
@@ -88,10 +107,10 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
                         </ul>
                     </div>
                     <div className="flex flex-col gap-2">
-                        <Link href="/worker/tasks" className="py-3 bg-green-500 text-white font-semibold rounded-xl">
+                        <Link href="/worker/tasks" className="py-3 bg-green-500 text-white font-semibold rounded-xl text-center">
                             📋 Go to Tasks
                         </Link>
-                        <Link href="/worker/leave" className="py-3 bg-orange-500 text-white font-semibold rounded-xl">
+                        <Link href="/worker/leave" className="py-3 bg-orange-500 text-white font-semibold rounded-xl text-center">
                             🏖️ Request Leave
                         </Link>
                         <button
@@ -107,140 +126,100 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex">
-            {/* Sidebar - Desktop */}
-            <aside className="hidden lg:flex lg:flex-col w-64 bg-white border-r border-gray-200 fixed h-full">
-                <div className="p-4 border-b border-gray-100">
-                    <div className="flex items-center gap-3">
+        <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 pb-20 lg:pb-0">
+            {/* Top Header */}
+            <header className="bg-white shadow-sm sticky top-0 z-40">
+                <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
                         <div className="w-10 h-10 relative">
                             <Image src="/logo.png" alt="AAKB" fill className="object-contain" />
                         </div>
                         <div>
-                            <h1 className="font-bold text-gray-800">AAKB Worker</h1>
-                            <p className="text-xs text-gray-500">Hari Om 🙏</p>
+                            <h1 className="font-bold text-gray-900">🙏 Hari Om</h1>
+                            <p className="text-xs text-gray-500">
+                                {isKioskDevice ? '✅ Office Kiosk' : '📱 Phone Mode'}
+                            </p>
                         </div>
                     </div>
-                </div>
-
-                <nav className="flex-1 p-4 space-y-1">
-                    {sidebarLinks.map(link => (
-                        <Link
-                            key={link.href}
-                            href={link.href}
-                            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition ${pathname === link.href
-                                ? 'bg-green-50 text-green-600 font-medium'
-                                : 'text-gray-600 hover:bg-gray-50'
-                                }`}
-                        >
-                            <span className="text-xl">{link.icon}</span>
-                            <span>{link.label}</span>
-                            {link.kioskOnly && !isKioskDevice && (
-                                <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded ml-auto">Kiosk</span>
-                            )}
-                        </Link>
-                    ))}
-                </nav>
-
-                <div className="p-4 border-t border-gray-100">
-                    {isKioskDevice && (
-                        <div className="bg-green-50 rounded-lg p-3 mb-3 text-xs text-green-700">
-                            ✅ Office Kiosk Verified
-                        </div>
-                    )}
-                    {!isKioskDevice && (
-                        <div className="bg-orange-50 rounded-lg p-3 mb-3 text-xs text-orange-700">
-                            📱 Phone Mode (Limited)
-                        </div>
-                    )}
                     <button
                         onClick={handleLogout}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl transition"
+                        className="p-2 text-gray-500 hover:text-red-500"
                     >
-                        <span className="text-xl">🚪</span>
-                        <span>Logout</span>
+                        🚪
                     </button>
                 </div>
-            </aside>
-
-            {/* Mobile Header */}
-            <div className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-50">
-                <div className="flex items-center justify-between p-4">
-                    <button onClick={() => setSidebarOpen(true)} className="p-2">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
-                    </button>
-                    <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 relative">
-                            <Image src="/logo.png" alt="AAKB" fill className="object-contain" />
-                        </div>
-                        <span className="font-bold text-gray-800">Worker</span>
-                        {!isKioskDevice && (
-                            <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded">📱</span>
-                        )}
-                    </div>
-                    <div className="w-10"></div>
-                </div>
-            </div>
-
-            {/* Mobile Sidebar */}
-            {sidebarOpen && (
-                <div className="lg:hidden fixed inset-0 z-50">
-                    <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)}></div>
-                    <aside className="absolute left-0 top-0 bottom-0 w-64 bg-white shadow-xl">
-                        <div className="p-4 border-b border-gray-100 flex justify-between items-center">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 relative">
-                                    <Image src="/logo.png" alt="AAKB" fill className="object-contain" />
-                                </div>
-                                <span className="font-bold">AAKB Worker</span>
-                            </div>
-                            <button onClick={() => setSidebarOpen(false)} className="p-2">✕</button>
-                        </div>
-                        <nav className="p-4 space-y-1">
-                            {sidebarLinks.map(link => {
-                                const isDisabled = link.kioskOnly && !isKioskDevice;
-                                return (
-                                    <Link
-                                        key={link.href}
-                                        href={isDisabled ? '#' : link.href}
-                                        onClick={(e) => {
-                                            if (isDisabled) {
-                                                e.preventDefault();
-                                                alert('This feature is only available from the office kiosk.');
-                                            } else {
-                                                setSidebarOpen(false);
-                                            }
-                                        }}
-                                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition ${pathname === link.href
-                                                ? 'bg-green-50 text-green-600 font-medium'
-                                                : isDisabled
-                                                    ? 'text-gray-400'
-                                                    : 'text-gray-600 hover:bg-gray-50'
-                                            }`}
-                                    >
-                                        <span className="text-xl">{link.icon}</span>
-                                        <span>{link.label}</span>
-                                        {isDisabled && <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded ml-auto">🔒</span>}
-                                    </Link>
-                                );
-                            })}
-                        </nav>
-                        <div className="p-4 border-t border-gray-100">
-                            <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl">
-                                <span>🚪</span><span>Logout</span>
-                            </button>
-                        </div>
-                    </aside>
-                </div>
-            )}
+            </header>
 
             {/* Main Content */}
-            <main className="flex-1 lg:ml-64 pt-16 lg:pt-0">
-                <div className="p-4 lg:p-6">
-                    {children}
-                </div>
+            <main className="max-w-4xl mx-auto p-4">
+                {children}
             </main>
+
+            {/* Bottom Navigation Bar - Mobile */}
+            <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
+                <div className="max-w-lg mx-auto flex justify-around items-center py-2">
+                    {navItems.map(item => {
+                        const isActive = pathname === item.href;
+                        const isDisabled = item.kioskOnly && !isKioskDevice;
+                        const badge = item.href === '/worker/tasks' ? overdueCount : 0;
+
+                        return (
+                            <Link
+                                key={item.href}
+                                href={isDisabled ? '#' : item.href}
+                                onClick={(e) => {
+                                    if (isDisabled) {
+                                        e.preventDefault();
+                                        alert('Only available from office kiosk');
+                                    }
+                                }}
+                                className={`flex flex-col items-center py-1 px-3 relative ${isActive ? 'text-green-600' : isDisabled ? 'text-gray-300' : 'text-gray-500'
+                                    }`}
+                            >
+                                <span className="text-xl relative">
+                                    {item.icon}
+                                    {badge > 0 && (
+                                        <span className="absolute -top-1 -right-2 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                                            {badge}
+                                        </span>
+                                    )}
+                                    {isDisabled && <span className="absolute -top-1 -right-1 text-xs">🔒</span>}
+                                </span>
+                                <span className={`text-xs mt-1 ${isActive ? 'font-semibold' : ''}`}>
+                                    {item.label}
+                                </span>
+                                {isActive && (
+                                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-1 bg-green-500 rounded-full"></div>
+                                )}
+                            </Link>
+                        );
+                    })}
+                </div>
+            </nav>
+
+            {/* Sidebar - Desktop */}
+            <aside className="hidden lg:block fixed left-0 top-16 bottom-0 w-64 bg-white border-r border-gray-200 p-4">
+                <nav className="space-y-1">
+                    {navItems.map(item => {
+                        const isActive = pathname === item.href;
+                        const isDisabled = item.kioskOnly && !isKioskDevice;
+
+                        return (
+                            <Link
+                                key={item.href}
+                                href={isDisabled ? '#' : item.href}
+                                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition ${isActive ? 'bg-green-50 text-green-600 font-medium' :
+                                        isDisabled ? 'text-gray-400 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-50'
+                                    }`}
+                            >
+                                <span className="text-xl">{item.icon}</span>
+                                <span>{item.label}</span>
+                                {isDisabled && <span className="ml-auto text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded">🔒</span>}
+                            </Link>
+                        );
+                    })}
+                </nav>
+            </aside>
         </div>
     );
 }
