@@ -41,17 +41,83 @@ export default function SwamijiDashboard() {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
 
+    // For tracking changes to show notifications
+    const [prevAttendance, setPrevAttendance] = useState<Attendance | null>(null);
+    const [prevTasksCompleted, setPrevTasksCompleted] = useState(0);
+
     // Task assignment
     const [showTaskModal, setShowTaskModal] = useState(false);
     const [newTask, setNewTask] = useState({ title: '', description: '', priority: 'medium' });
     const [assigning, setAssigning] = useState(false);
 
     useEffect(() => {
+        // Request notification permission on load
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
         checkAuth();
         loadData();
-        const interval = setInterval(loadData, 30000);
+        const interval = setInterval(loadData, 10000); // Check every 10 seconds
         return () => clearInterval(interval);
     }, []);
+
+    function showNotification(title: string, body: string, icon: string = '🔔') {
+        // Show browser notification if permitted
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(title, { body, icon: '/logo.png' });
+        }
+
+        // Also play a sound
+        try {
+            const audio = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgA');
+            audio.volume = 0.3;
+            audio.play().catch(() => { });
+        } catch (e) { }
+    }
+
+    // Watch for changes and show notifications
+    useEffect(() => {
+        if (!worker || !prevAttendance) return;
+
+        // Check-in notification
+        if (!prevAttendance.check_in_time && attendance?.check_in_time) {
+            const status = attendance.status === 'late' ? '⏰ LATE' : '✅ On Time';
+            showNotification(
+                `${worker.name} Checked In`,
+                `${status} at ${new Date(attendance.check_in_time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`
+            );
+        }
+
+        // Check-out notification
+        if (!prevAttendance.check_out_time && attendance?.check_out_time) {
+            showNotification(
+                `${worker.name} Checked Out`,
+                `Day complete. Hours worked: ${getHoursWorked()}`
+            );
+        }
+
+        // Early exit request notification
+        if (!prevAttendance.early_exit_requested && attendance?.early_exit_requested) {
+            showNotification(
+                '🙏 Early Exit Request',
+                `${worker.name} wants to leave early: ${attendance.early_exit_reason}`
+            );
+        }
+
+    }, [attendance, prevAttendance, worker]);
+
+    // Watch for task completions
+    useEffect(() => {
+        const completed = tasks.filter(t => t.status === 'completed').length;
+        if (prevTasksCompleted > 0 && completed > prevTasksCompleted && worker) {
+            showNotification(
+                '✅ Task Completed',
+                `${worker.name} completed a task`
+            );
+        }
+        setPrevTasksCompleted(completed);
+    }, [tasks, worker]);
 
     async function checkAuth() {
         const token = localStorage.getItem('aakb_device_token');
@@ -81,6 +147,9 @@ export default function SwamijiDashboard() {
                     .eq('worker_id', w.id)
                     .eq('date', today)
                     .single();
+
+                // Store previous state before updating
+                setPrevAttendance(attendance);
                 setAttendance(att);
 
                 const { data: tasksData } = await supabase
