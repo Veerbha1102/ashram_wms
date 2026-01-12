@@ -132,12 +132,15 @@ export default function SwamijiDashboard() {
         try {
             const today = new Date().toISOString().split('T')[0];
 
-            const { data: workers } = await supabase
+            // Get all workers (active or not) - system is designed for single worker
+            const { data: workers, error: workerError } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('role', 'worker')
-                .eq('is_active', true)
+                .order('created_at', { ascending: false })
                 .limit(1);
+
+            console.log('Workers found:', workers, 'Error:', workerError);
 
             if (workers && workers.length > 0) {
                 const w = workers[0];
