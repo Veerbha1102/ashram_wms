@@ -334,8 +334,34 @@ export default function SwamijiDashboard() {
             </header>
 
             <main className="max-w-4xl mx-auto p-4 space-y-6">
-                {/* LATE NOTIFICATION */}
-                {isWorkerLate && (
+                {/* SMART STATUS BANNER */}
+                {!worker ? (
+                    <div className="bg-gray-500 text-white rounded-2xl p-6 shadow-lg">
+                        <div className="flex items-start gap-4">
+                            <div className="text-4xl">👤</div>
+                            <div className="flex-1">
+                                <h3 className="text-xl font-bold mb-1">No Worker Assigned</h3>
+                                <p className="text-gray-200 mb-2">There is no active worker in the system yet.</p>
+                                <p className="text-sm text-gray-300">
+                                    Ask Admin to add a worker in the Admin Panel → Workers
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                ) : hasApprovedLeave ? (
+                    <div className="bg-blue-500 text-white rounded-2xl p-6 shadow-lg">
+                        <div className="flex items-start gap-4">
+                            <div className="text-4xl">🏖️</div>
+                            <div className="flex-1">
+                                <h3 className="text-xl font-bold mb-1">Worker is On Leave</h3>
+                                <p className="text-blue-100 mb-2">{worker?.name} has approved leave today</p>
+                                <p className="bg-white/20 rounded-lg px-3 py-2 text-sm inline-block">
+                                    No action required - Enjoy your day! 🙏
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                ) : isWorkerLate ? (
                     <div className="bg-red-500 text-white rounded-2xl p-6 shadow-lg">
                         <div className="flex items-start gap-4">
                             <div className="text-4xl">⏰</div>
@@ -363,82 +389,122 @@ export default function SwamijiDashboard() {
                             </div>
                         </div>
                     </div>
+                ) : attendance?.check_in_time && !attendance?.check_out_time ? (
+                    <div className="bg-green-500 text-white rounded-2xl p-6 shadow-lg">
+                        <div className="flex items-start gap-4">
+                            <div className="text-4xl">{workerStatus.icon}</div>
+                            <div className="flex-1">
+                                <h3 className="text-xl font-bold mb-1">{worker?.name} is {workerStatus.status}</h3>
+                                <p className="text-green-100">
+                                    Checked in at {formatTime(attendance.check_in_time)} • Working for {getHoursWorked()}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                ) : attendance?.check_out_time ? (
+                    <div className="bg-purple-500 text-white rounded-2xl p-6 shadow-lg">
+                        <div className="flex items-start gap-4">
+                            <div className="text-4xl">✅</div>
+                            <div className="flex-1">
+                                <h3 className="text-xl font-bold mb-1">Day Complete</h3>
+                                <p className="text-purple-100">
+                                    {worker?.name} worked {getHoursWorked()} today
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="bg-yellow-500 text-white rounded-2xl p-6 shadow-lg">
+                        <div className="flex items-start gap-4">
+                            <div className="text-4xl">😴</div>
+                            <div className="flex-1">
+                                <h3 className="text-xl font-bold mb-1">Waiting for Worker</h3>
+                                <p className="text-yellow-100">
+                                    {worker?.name} hasn't started yet (Before 9:30 AM)
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {/* Early Exit Request Alert */}
-                {attendance?.early_exit_requested && !attendance?.early_exit_approved && (
-                    <div className="bg-orange-500 text-white rounded-2xl p-6 shadow-lg animate-pulse">
-                        <div className="flex items-start gap-4">
-                            <div className="text-4xl">🙏</div>
-                            <div className="flex-1">
-                                <h3 className="text-xl font-bold mb-1">Early Exit Request</h3>
-                                <p className="text-orange-100 mb-2">{worker?.name} wants to leave early</p>
-                                <p className="bg-white/20 rounded-lg p-3 text-sm mb-4">
-                                    "{attendance.early_exit_reason}"
-                                </p>
-                                <p className="text-sm text-orange-100 mb-4">Hours worked: {getHoursWorked()}</p>
-                                <div className="flex gap-3">
-                                    <button
-                                        onClick={approveEarlyExit}
-                                        className="px-6 py-2 bg-white text-orange-600 font-bold rounded-xl"
-                                    >
-                                        ✅ APPROVE
-                                    </button>
-                                    <a
-                                        href={`tel:${worker?.phone}`}
-                                        className="px-6 py-2 bg-orange-600 text-white font-bold rounded-xl"
-                                    >
-                                        📞 CALL
-                                    </a>
+                {
+                    attendance?.early_exit_requested && !attendance?.early_exit_approved && (
+                        <div className="bg-orange-500 text-white rounded-2xl p-6 shadow-lg animate-pulse">
+                            <div className="flex items-start gap-4">
+                                <div className="text-4xl">🙏</div>
+                                <div className="flex-1">
+                                    <h3 className="text-xl font-bold mb-1">Early Exit Request</h3>
+                                    <p className="text-orange-100 mb-2">{worker?.name} wants to leave early</p>
+                                    <p className="bg-white/20 rounded-lg p-3 text-sm mb-4">
+                                        "{attendance.early_exit_reason}"
+                                    </p>
+                                    <p className="text-sm text-orange-100 mb-4">Hours worked: {getHoursWorked()}</p>
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={approveEarlyExit}
+                                            className="px-6 py-2 bg-white text-orange-600 font-bold rounded-xl"
+                                        >
+                                            ✅ APPROVE
+                                        </button>
+                                        <a
+                                            href={`tel:${worker?.phone}`}
+                                            className="px-6 py-2 bg-orange-600 text-white font-bold rounded-xl"
+                                        >
+                                            📞 CALL
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )
+                }
 
                 {/* Worker Card */}
-                {worker && (
-                    <div className="bg-white rounded-2xl shadow-lg p-6">
-                        <div className="flex items-center justify-between mb-6">
-                            <div className="flex items-center gap-4">
-                                <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center text-2xl font-bold text-orange-600">
-                                    {worker.name.charAt(0)}
+                {
+                    worker && (
+                        <div className="bg-white rounded-2xl shadow-lg p-6">
+                            <div className="flex items-center justify-between mb-6">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center text-2xl font-bold text-orange-600">
+                                        {worker.name.charAt(0)}
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-bold text-gray-900">{worker.name}</h2>
+                                        <p className="text-gray-500">{worker.phone}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h2 className="text-xl font-bold text-gray-900">{worker.name}</h2>
-                                    <p className="text-gray-500">{worker.phone}</p>
+                                <div className={`px-4 py-2 rounded-full font-medium ${workerStatus.color}`}>
+                                    {workerStatus.icon} {workerStatus.status}
                                 </div>
                             </div>
-                            <div className={`px-4 py-2 rounded-full font-medium ${workerStatus.color}`}>
-                                {workerStatus.icon} {workerStatus.status}
-                            </div>
-                        </div>
 
-                        {/* Today's Stats */}
-                        <div className="grid grid-cols-3 gap-4 mb-6">
-                            <div className="bg-gray-50 rounded-xl p-4 text-center">
-                                <p className="text-xs text-gray-500 uppercase mb-1">Check In</p>
-                                <p className="text-xl font-bold text-gray-900">{formatTime(attendance?.check_in_time || null)}</p>
+                            {/* Today's Stats */}
+                            <div className="grid grid-cols-3 gap-4 mb-6">
+                                <div className="bg-gray-50 rounded-xl p-4 text-center">
+                                    <p className="text-xs text-gray-500 uppercase mb-1">Check In</p>
+                                    <p className="text-xl font-bold text-gray-900">{formatTime(attendance?.check_in_time || null)}</p>
+                                </div>
+                                <div className="bg-gray-50 rounded-xl p-4 text-center">
+                                    <p className="text-xs text-gray-500 uppercase mb-1">Hours Today</p>
+                                    <p className="text-xl font-bold text-blue-600">{getHoursWorked()}</p>
+                                </div>
+                                <div className="bg-gray-50 rounded-xl p-4 text-center">
+                                    <p className="text-xs text-gray-500 uppercase mb-1">Check Out</p>
+                                    <p className="text-xl font-bold text-gray-900">{formatTime(attendance?.check_out_time || null)}</p>
+                                </div>
                             </div>
-                            <div className="bg-gray-50 rounded-xl p-4 text-center">
-                                <p className="text-xs text-gray-500 uppercase mb-1">Hours Today</p>
-                                <p className="text-xl font-bold text-blue-600">{getHoursWorked()}</p>
-                            </div>
-                            <div className="bg-gray-50 rounded-xl p-4 text-center">
-                                <p className="text-xs text-gray-500 uppercase mb-1">Check Out</p>
-                                <p className="text-xl font-bold text-gray-900">{formatTime(attendance?.check_out_time || null)}</p>
-                            </div>
-                        </div>
 
-                        {/* Quick Action */}
-                        <a
-                            href={`tel:${worker.phone}`}
-                            className="w-full py-3 bg-green-500 text-white font-bold rounded-xl flex items-center justify-center gap-2"
-                        >
-                            📞 Call {worker.name.split(' ')[0]}
-                        </a>
-                    </div>
-                )}
+                            {/* Quick Action */}
+                            <a
+                                href={`tel:${worker.phone}`}
+                                className="w-full py-3 bg-green-500 text-white font-bold rounded-xl flex items-center justify-center gap-2"
+                            >
+                                📞 Call {worker.name.split(' ')[0]}
+                            </a>
+                        </div>
+                    )
+                }
 
                 {/* Assign Task Button */}
                 <button
@@ -632,66 +698,68 @@ export default function SwamijiDashboard() {
                         {tasksCompleted === tasks.length && tasks.length > 0 && <li>• 🎉 All tasks completed!</li>}
                     </ul>
                 </div>
-            </main>
+            </main >
 
             {/* Assign Task Modal */}
-            {showTaskModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
-                        <h3 className="text-xl font-bold text-gray-900 mb-4">📋 Assign Task to {worker?.name}</h3>
+            {
+                showTaskModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                        <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+                            <h3 className="text-xl font-bold text-gray-900 mb-4">📋 Assign Task to {worker?.name}</h3>
 
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-800 mb-2">Task Title *</label>
-                                <input
-                                    value={newTask.title}
-                                    onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                                    className="w-full p-3 border border-gray-300 rounded-xl text-gray-900"
-                                    placeholder="What should be done?"
-                                />
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-800 mb-2">Task Title *</label>
+                                    <input
+                                        value={newTask.title}
+                                        onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                                        className="w-full p-3 border border-gray-300 rounded-xl text-gray-900"
+                                        placeholder="What should be done?"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-800 mb-2">Details (optional)</label>
+                                    <textarea
+                                        value={newTask.description}
+                                        onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                                        className="w-full p-3 border border-gray-300 rounded-xl text-gray-900 min-h-[80px]"
+                                        placeholder="Additional instructions..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-800 mb-2">Priority</label>
+                                    <select
+                                        value={newTask.priority}
+                                        onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })}
+                                        className="w-full p-3 border border-gray-300 rounded-xl text-gray-900"
+                                    >
+                                        <option value="low">Low</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="high">High (Critical - blocks end of day)</option>
+                                        <option value="urgent">Urgent (Critical)</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-800 mb-2">Details (optional)</label>
-                                <textarea
-                                    value={newTask.description}
-                                    onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                                    className="w-full p-3 border border-gray-300 rounded-xl text-gray-900 min-h-[80px]"
-                                    placeholder="Additional instructions..."
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-800 mb-2">Priority</label>
-                                <select
-                                    value={newTask.priority}
-                                    onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })}
-                                    className="w-full p-3 border border-gray-300 rounded-xl text-gray-900"
+
+                            <div className="flex gap-3 mt-6">
+                                <button
+                                    onClick={() => setShowTaskModal(false)}
+                                    className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl"
                                 >
-                                    <option value="low">Low</option>
-                                    <option value="medium">Medium</option>
-                                    <option value="high">High (Critical - blocks end of day)</option>
-                                    <option value="urgent">Urgent (Critical)</option>
-                                </select>
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={assignTask}
+                                    disabled={assigning}
+                                    className="flex-1 py-3 bg-orange-500 text-white font-semibold rounded-xl disabled:opacity-50"
+                                >
+                                    {assigning ? 'Assigning...' : 'Assign Task'}
+                                </button>
                             </div>
-                        </div>
-
-                        <div className="flex gap-3 mt-6">
-                            <button
-                                onClick={() => setShowTaskModal(false)}
-                                className="flex-1 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={assignTask}
-                                disabled={assigning}
-                                className="flex-1 py-3 bg-orange-500 text-white font-semibold rounded-xl disabled:opacity-50"
-                            >
-                                {assigning ? 'Assigning...' : 'Assign Task'}
-                            </button>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }
