@@ -242,6 +242,10 @@ export default function SwamijiDashboard() {
     }
 
     function getWorkerStatus(): { status: string; color: string; icon: string } {
+        // Check for approved leave first
+        if (hasApprovedLeave) {
+            return { status: 'On Leave', color: 'bg-blue-100 text-blue-700', icon: '🏖️' };
+        }
         if (!attendance?.check_in_time) {
             return { status: 'Not Started', color: 'bg-gray-100 text-gray-600', icon: '😴' };
         }
@@ -253,6 +257,9 @@ export default function SwamijiDashboard() {
         }
         if (attendance.status === 'event') {
             return { status: 'Event Duty', color: 'bg-purple-100 text-purple-700', icon: '📷' };
+        }
+        if (attendance.status === 'late') {
+            return { status: 'Working (Late)', color: 'bg-yellow-100 text-yellow-700', icon: '⏰' };
         }
         return { status: 'Working', color: 'bg-green-100 text-green-700', icon: '💼' };
     }
