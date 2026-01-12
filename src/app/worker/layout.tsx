@@ -9,7 +9,7 @@ const navItems = [
     { href: '/worker', icon: '🏠', label: 'Home', kioskOnly: true },
     { href: '/worker/tasks', icon: '📋', label: 'Tasks', kioskOnly: false },
     { href: '/worker/leave', icon: '🏖️', label: 'Leave', kioskOnly: false },
-    { href: '/worker/history', icon: '📅', label: 'History', kioskOnly: false },
+    { href: '/worker/holidays', icon: '🗓️', label: 'Holidays', kioskOnly: false },
     { href: '/worker/profile', icon: '👤', label: 'Profile', kioskOnly: false },
 ];
 
@@ -209,7 +209,7 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
                                 key={item.href}
                                 href={isDisabled ? '#' : item.href}
                                 className={`flex items-center gap-3 px-4 py-3 rounded-xl transition ${isActive ? 'bg-green-50 text-green-600 font-medium' :
-                                        isDisabled ? 'text-gray-400 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-50'
+                                    isDisabled ? 'text-gray-400 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-50'
                                     }`}
                             >
                                 <span className="text-xl">{item.icon}</span>

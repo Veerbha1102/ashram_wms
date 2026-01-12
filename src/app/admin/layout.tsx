@@ -10,12 +10,13 @@ const navItems = [
     { href: '/admin/workers', icon: '👥', label: 'Workers' },
     { href: '/admin/tasks', icon: '📋', label: 'Tasks' },
     { href: '/admin/leaves', icon: '🏖️', label: 'Leaves' },
-    { href: '/admin/settings', icon: '⚙️', label: 'Settings' },
+    { href: '/admin/holidays', icon: '🗓️', label: 'Holidays' },
 ];
 
 const moreItems = [
     { href: '/admin/attendance', icon: '📅', label: 'Attendance' },
     { href: '/admin/reports', icon: '📈', label: 'Reports' },
+    { href: '/admin/settings', icon: '⚙️', label: 'Settings' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

@@ -167,10 +167,21 @@ export default function WorkerDashboard() {
 
     async function handleModeChange(mode: 'WORKING' | 'FIELD_MODE' | 'EVENT_MODE') {
         setWorkState(mode);
+        const statusValue = mode === 'FIELD_MODE' ? 'field' : mode === 'EVENT_MODE' ? 'event' : 'present';
+
         if (attendanceId) {
             await supabase.from('attendance').update({
-                status: mode === 'FIELD_MODE' ? 'field' : mode === 'EVENT_MODE' ? 'event' : 'present'
+                status: statusValue,
+                mode_changed_at: new Date().toISOString()
             }).eq('id', attendanceId);
+
+            // Log this mode change for Swamiji notifications
+            await supabase.from('activity_log').insert({
+                worker_id: worker?.id,
+                action: mode === 'FIELD_MODE' ? 'field_mode' : mode === 'EVENT_MODE' ? 'event_mode' : 'working',
+                description: mode === 'FIELD_MODE' ? 'Switched to Field Mode' : mode === 'EVENT_MODE' ? 'Switched to Event Duty' : 'Returned to Office',
+                created_at: new Date().toISOString()
+            });
         }
     }
 
