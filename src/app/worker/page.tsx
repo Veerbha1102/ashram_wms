@@ -24,7 +24,7 @@ export default function WorkerDashboard() {
     const [isLate, setIsLate] = useState(false);
     const [earlyExitRequested, setEarlyExitRequested] = useState(false);
     const [earlyExitApproved, setEarlyExitApproved] = useState(false);
-    const [taskStats, setTaskStats] = useState({ total: 0, completed: 0 });
+    const [taskStats, setTaskStats] = useState({ total: 0, completed: 0, overdue: 0 });
 
     // Kiosk Check
     const [isKioskDevice, setIsKioskDevice] = useState(true);
@@ -108,11 +108,13 @@ export default function WorkerDashboard() {
             setWorker(data);
             const today = new Date().toISOString().split('T')[0];
 
-            // Load tasks
-            const { data: tasks } = await supabase.from('tasks').select('status').eq('assigned_to', data.id);
+            // Load tasks including overdue check
+            const { data: tasks } = await supabase.from('tasks').select('status, due_date').eq('assigned_to', data.id);
+            const overdue = tasks?.filter(t => t.status !== 'completed' && t.due_date && t.due_date < today).length || 0;
             setTaskStats({
                 total: tasks?.length || 0,
-                completed: tasks?.filter(t => t.status === 'completed').length || 0
+                completed: tasks?.filter(t => t.status === 'completed').length || 0,
+                overdue
             });
 
             // Load attendance
@@ -254,8 +256,8 @@ export default function WorkerDashboard() {
                             onClick={handleStartDay}
                             disabled={!isKioskDevice}
                             className={`w-full py-4 text-white text-xl font-bold rounded-2xl shadow-lg active:scale-95 transition ${isKioskDevice
-                                    ? 'bg-gradient-to-r from-green-500 to-emerald-500'
-                                    : 'bg-gray-400 cursor-not-allowed'
+                                ? 'bg-gradient-to-r from-green-500 to-emerald-500'
+                                : 'bg-gray-400 cursor-not-allowed'
                                 }`}
                         >
                             {isKioskDevice ? '▶️ START DAY' : '🔒 Go to Office Kiosk'}
@@ -304,10 +306,12 @@ export default function WorkerDashboard() {
 
                     {/* Quick Links */}
                     <div className="grid grid-cols-2 gap-4">
-                        <Link href="/worker/tasks" className="bg-white rounded-xl p-4 shadow flex items-center gap-3">
+                        <Link href="/worker/tasks" className={`rounded-xl p-4 shadow flex items-center gap-3 ${taskStats.overdue > 0 ? 'bg-red-50 border-2 border-red-400' : 'bg-white'}`}>
                             <span className="text-2xl">📋</span>
                             <div>
-                                <p className="font-medium text-gray-800">My Tasks</p>
+                                <p className={`font-medium ${taskStats.overdue > 0 ? 'text-red-700' : 'text-gray-800'}`}>
+                                    My Tasks {taskStats.overdue > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded ml-1">{taskStats.overdue} OVERDUE</span>}
+                                </p>
                                 <p className="text-xs text-gray-500">{taskStats.completed}/{taskStats.total} done</p>
                             </div>
                         </Link>
