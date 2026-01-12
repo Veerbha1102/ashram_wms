@@ -307,7 +307,7 @@ export default function SwamijiDashboard() {
                         <div className="grid grid-cols-3 gap-4 mb-6">
                             <div className="bg-gray-50 rounded-xl p-4 text-center">
                                 <p className="text-xs text-gray-500 uppercase mb-1">Check In</p>
-                                <p className="text-xl font-bold text-gray-900">{formatTime(attendance?.check_in_time)}</p>
+                                <p className="text-xl font-bold text-gray-900">{formatTime(attendance?.check_in_time || null)}</p>
                             </div>
                             <div className="bg-gray-50 rounded-xl p-4 text-center">
                                 <p className="text-xs text-gray-500 uppercase mb-1">Hours Today</p>
@@ -315,7 +315,7 @@ export default function SwamijiDashboard() {
                             </div>
                             <div className="bg-gray-50 rounded-xl p-4 text-center">
                                 <p className="text-xs text-gray-500 uppercase mb-1">Check Out</p>
-                                <p className="text-xl font-bold text-gray-900">{formatTime(attendance?.check_out_time)}</p>
+                                <p className="text-xl font-bold text-gray-900">{formatTime(attendance?.check_out_time || null)}</p>
                             </div>
                         </div>
 
@@ -411,13 +411,113 @@ export default function SwamijiDashboard() {
                     </div>
                 </div>
 
-                {/* Suggestions */}
+                {/* Today's Activity Timeline */}
+                <div className="bg-white rounded-2xl shadow-lg p-6">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4">🔔 Today&apos;s Activity</h3>
+
+                    <div className="space-y-3">
+                        {/* Punch In */}
+                        {attendance?.check_in_time ? (
+                            <div className={`flex items-center gap-4 p-3 rounded-xl ${attendance.status === 'late' ? 'bg-orange-50' : 'bg-green-50'}`}>
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${attendance.status === 'late' ? 'bg-orange-500' : 'bg-green-500'} text-white`}>
+                                    {attendance.status === 'late' ? '⏰' : '✅'}
+                                </div>
+                                <div className="flex-1">
+                                    <p className="font-medium text-gray-900">
+                                        {attendance.status === 'late' ? 'Checked In LATE' : 'Checked In On Time'}
+                                    </p>
+                                    <p className="text-sm text-gray-500">{formatTime(attendance.check_in_time)}</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex items-center gap-4 p-3 rounded-xl bg-gray-50">
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-gray-300 text-white">⏳</div>
+                                <div>
+                                    <p className="font-medium text-gray-500">Not Checked In Yet</p>
+                                    <p className="text-sm text-gray-400">Waiting...</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Mode Changes */}
+                        {attendance?.status === 'field' && (
+                            <div className="flex items-center gap-4 p-3 rounded-xl bg-orange-50">
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-orange-500 text-white">🛵</div>
+                                <div>
+                                    <p className="font-medium text-gray-900">Switched to Field Mode</p>
+                                    <p className="text-sm text-gray-500">Currently on field work</p>
+                                </div>
+                            </div>
+                        )}
+                        {attendance?.status === 'event' && (
+                            <div className="flex items-center gap-4 p-3 rounded-xl bg-purple-50">
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-purple-500 text-white">📷</div>
+                                <div>
+                                    <p className="font-medium text-gray-900">On Event Duty</p>
+                                    <p className="text-sm text-gray-500">Currently at event</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Task Completions */}
+                        {tasks.filter(t => t.status === 'completed').slice(0, 3).map(task => (
+                            <div key={task.id} className="flex items-center gap-4 p-3 rounded-xl bg-green-50">
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-green-500 text-white">✓</div>
+                                <div>
+                                    <p className="font-medium text-gray-900">Task Completed</p>
+                                    <p className="text-sm text-gray-500">{task.title}</p>
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* Pending Tasks */}
+                        {tasks.filter(t => t.status !== 'completed').length > 0 && (
+                            <div className="flex items-center gap-4 p-3 rounded-xl bg-yellow-50">
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-yellow-500 text-white">📋</div>
+                                <div>
+                                    <p className="font-medium text-gray-900">{tasks.filter(t => t.status !== 'completed').length} Tasks Pending</p>
+                                    <p className="text-sm text-gray-500">Not completed yet</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Punch Out */}
+                        {attendance?.check_out_time && (
+                            <div className="flex items-center gap-4 p-3 rounded-xl bg-blue-50">
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-500 text-white">🏠</div>
+                                <div>
+                                    <p className="font-medium text-gray-900">Checked Out</p>
+                                    <p className="text-sm text-gray-500">{formatTime(attendance.check_out_time)} • {getHoursWorked()} hours worked</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Early Exit Request */}
+                        {attendance?.early_exit_requested && (
+                            <div className={`flex items-center gap-4 p-3 rounded-xl ${attendance.early_exit_approved ? 'bg-green-50' : 'bg-orange-50'}`}>
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${attendance.early_exit_approved ? 'bg-green-500' : 'bg-orange-500'} text-white`}>
+                                    {attendance.early_exit_approved ? '✅' : '🙏'}
+                                </div>
+                                <div>
+                                    <p className="font-medium text-gray-900">
+                                        {attendance.early_exit_approved ? 'Early Exit Approved' : 'Early Exit Pending'}
+                                    </p>
+                                    <p className="text-sm text-gray-500">{attendance.early_exit_reason}</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Quick Summary */}
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                    <h4 className="font-bold text-blue-800 mb-2">💡 Quick Info</h4>
+                    <h4 className="font-bold text-blue-800 mb-2">💡 Quick Summary</h4>
                     <ul className="text-sm text-blue-700 space-y-1">
                         {!attendance?.check_in_time && <li>• {worker?.name} has not started work today</li>}
+                        {attendance?.check_in_time && !attendance?.check_out_time && <li>• Currently working: {getHoursWorked()} hours</li>}
+                        {attendance?.check_out_time && <li>• Day complete: {getHoursWorked()} hours worked</li>}
                         {tasksPending > 0 && <li>• {tasksPending} task(s) pending completion</li>}
-                        {attendance?.status === 'late' && <li>• Worker checked in late today</li>}
+                        {attendance?.status === 'late' && <li>• ⚠️ Worker checked in late today</li>}
                         {tasksCompleted === tasks.length && tasks.length > 0 && <li>• 🎉 All tasks completed!</li>}
                     </ul>
                 </div>
