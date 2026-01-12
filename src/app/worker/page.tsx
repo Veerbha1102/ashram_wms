@@ -25,6 +25,7 @@ export default function WorkerDashboard() {
     const [earlyExitRequested, setEarlyExitRequested] = useState(false);
     const [earlyExitApproved, setEarlyExitApproved] = useState(false);
     const [taskStats, setTaskStats] = useState({ total: 0, completed: 0, overdue: 0 });
+    const [emergencyContact, setEmergencyContact] = useState('9274173384'); // Default
 
     // Kiosk Check
     const [isKioskDevice, setIsKioskDevice] = useState(true);
@@ -135,6 +136,16 @@ export default function WorkerDashboard() {
                     setElapsedSeconds(Math.floor((checkOut.getTime() - checkIn.getTime()) / 1000));
                 }
             }
+
+            // Load emergency contact from admin settings
+            const { data: contactSetting } = await supabase
+                .from('settings')
+                .select('value')
+                .eq('key', 'emergency_contact')
+                .single();
+            if (contactSetting?.value) {
+                setEmergencyContact(contactSetting.value);
+            }
         } catch (err) {
             console.error('Error:', err);
         } finally {
@@ -191,7 +202,7 @@ export default function WorkerDashboard() {
         setEarlyExitRequested(true);
         setShowEarlyExitModal(false);
         const msg = `🙏 Hari Om Swamiji. ${worker?.name} needs to leave early.\n\nReason: ${earlyExitReason}\n\nPlease approve in AAKB app.`;
-        window.open(`https://wa.me/919999999999?text=${encodeURIComponent(msg)}`, '_blank');
+        window.open(`https://wa.me/91${emergencyContact.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
     }
 
     function handleEndDayClick() {
