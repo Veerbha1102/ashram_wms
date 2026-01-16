@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
             await supabase
                 .from('push_tokens')
                 .insert({
-                    user_id: user.user_id,
+                    user_id: user.id,
                     token,
                     platform,
                     device_name: deviceName || platform,
@@ -58,14 +58,14 @@ export async function POST(request: NextRequest) {
         const { data: settings } = await supabase
             .from('notification_settings')
             .select('*')
-            .eq('user_id', user.user_id)
+            .eq('user_id', user.id)
             .single();
 
         if (!settings) {
             await supabase
                 .from('notification_settings')
                 .insert({
-                    user_id: user.user_id,
+                    user_id: user.id,
                     push_enabled: true,
                     email_enabled: true,
                     task_notifications: true,
