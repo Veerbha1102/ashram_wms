@@ -41,12 +41,13 @@ export default function TasksPage() {
     async function loadData() {
         setLoading(true);
 
-        // Load workers
-        const { data: workersData } = await supabase
+        // Load workers - removed is_active filter to avoid column not found error
+        const { data: workersData, error: workersError } = await supabase
             .from('profiles')
             .select('id, name')
-            .eq('role', 'worker')
-            .eq('is_active', true);
+            .eq('role', 'worker');
+
+        console.log('Workers loaded:', workersData, 'Error:', workersError);
         setWorkers(workersData || []);
 
         // Load tasks
