@@ -6,12 +6,12 @@ importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-comp
 
 // Initialize Firebase in service worker
 firebase.initializeApp({
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyDO88UCi8082ZXAy-L-wUNV4war2V0XMJY",
+    authDomain: "ashram-wms.firebaseapp.com",
+    projectId: "ashram-wms",
+    storageBucket: "ashram-wms.firebasestorage.app",
+    messagingSenderId: "831424387889",
+    appId: "1:831424387889:web:83e0889a58979f3aa0ee10"
 });
 
 const messaging = firebase.messaging();
