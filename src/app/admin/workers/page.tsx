@@ -153,20 +153,32 @@ export default function WorkersPage() {
         setSaving(true);
 
         try {
-            // Delete related data first
-            await supabase.from('attendance').delete().eq('worker_id', selectedWorker.id);
-            await supabase.from('tasks').delete().eq('assigned_to', selectedWorker.id);
-            await supabase.from('leaves').delete().eq('worker_id', selectedWorker.id);
-            await supabase.from('worker_holidays').delete().eq('worker_id', selectedWorker.id);
+            console.log('Deleting worker:', selectedWorker.id, selectedWorker.name);
 
-            // Delete the worker
+            // Delete related data first
+            const { error: attError } = await supabase.from('attendance').delete().eq('worker_id', selectedWorker.id);
+            console.log('Attendance delete:', attError ? attError.message : 'OK');
+
+            const { error: taskError } = await supabase.from('tasks').delete().eq('assigned_to', selectedWorker.id);
+            console.log('Tasks delete:', taskError ? taskError.message : 'OK');
+
+            const { error: leaveError } = await supabase.from('leaves').delete().eq('worker_id', selectedWorker.id);
+            console.log('Leaves delete:', leaveError ? leaveError.message : 'OK');
+
+            // Delete the worker profile
             const { error } = await supabase.from('profiles').delete().eq('id', selectedWorker.id);
-            if (error) throw error;
+            console.log('Profile delete:', error ? error.message : 'OK');
+
+            if (error) {
+                console.error('Delete error:', error);
+                throw error;
+            }
 
             showSuccess('🗑️ Deleted!', `${selectedWorker.name} has been removed from the system.`);
             loadWorkers();
         } catch (err) {
-            showError('❌ Error', 'Failed to delete worker. Please try again.');
+            console.error('Delete failed:', err);
+            showError('❌ Error', 'Failed to delete worker. Check if RLS is disabled in Supabase.');
         } finally {
             setSaving(false);
         }
@@ -233,8 +245,8 @@ export default function WorkersPage() {
                                     <button
                                         onClick={() => openToggleModal(worker)}
                                         className={`flex-1 py-3 rounded-xl font-medium transition ${worker.is_active
-                                                ? 'bg-orange-50 text-orange-600 hover:bg-orange-100'
-                                                : 'bg-green-50 text-green-600 hover:bg-green-100'
+                                            ? 'bg-orange-50 text-orange-600 hover:bg-orange-100'
+                                            : 'bg-green-50 text-green-600 hover:bg-green-100'
                                             }`}
                                     >
                                         {worker.is_active ? '⏸️ Disable' : '▶️ Enable'}
@@ -395,8 +407,8 @@ export default function WorkersPage() {
                                 onClick={confirmToggle}
                                 disabled={saving}
                                 className={`flex-1 py-4 text-white font-bold rounded-xl hover:shadow-lg transition disabled:opacity-50 ${selectedWorker.is_active
-                                        ? 'bg-gradient-to-r from-orange-500 to-orange-600'
-                                        : 'bg-gradient-to-r from-green-500 to-green-600'
+                                    ? 'bg-gradient-to-r from-orange-500 to-orange-600'
+                                    : 'bg-gradient-to-r from-green-500 to-green-600'
                                     }`}
                             >
                                 {saving ? '⏳ Processing...' : selectedWorker.is_active ? '⏸️ Disable' : '▶️ Enable'}
