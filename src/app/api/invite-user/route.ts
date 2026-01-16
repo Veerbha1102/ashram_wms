@@ -73,16 +73,25 @@ export async function POST(request: NextRequest) {
         }
 
         // Create profile (will be auto-created by trigger, but we do it explicitly for safety)
-        await supabaseAdmin.from('profiles').insert({
-            id: authData.user.id,
-            gmail: email.toLowerCase(),
-            name: full_name,
-            role: role,
-            phone: email,
-            is_active: true,
-        }).then(() => {
-            // Ignore conflict errors - trigger might have already created it
-        });
+        // Use upsert to avoid conflicts
+        const { error: profileError } = await supabaseAdmin
+            .from('profiles')
+            .upsert({
+                id: authData.user.id,
+                gmail: email.toLowerCase(),
+                name: full_name,
+                role: role,
+                phone: email,
+                is_active: true,
+            }, {
+                onConflict: 'id'
+            });
+
+        if (profileError) {
+            console.error('Profile creation error:', profileError);
+            // Don't fail if profile creation fails due to trigger
+            // Just log it
+        }
 
         // Send password reset email so user can set their own password
         if (!password) {
