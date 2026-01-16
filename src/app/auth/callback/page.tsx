@@ -1,11 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { checkAuthorization, updateLastLogin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase';
 
-export default function AuthCallback() {
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+// Version: Fix for Vercel deployment - Suspense boundary added
+
+
+function AuthCallbackContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [error, setError] = useState('');
@@ -142,3 +147,21 @@ export default function AuthCallback() {
         </div>
     );
 }
+
+export default function AuthCallback() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-gradient-to-br from-orange-100 to-amber-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="w-16 h-16 mx-auto bg-orange-100 rounded-full flex items-center justify-center mb-4 animate-pulse">
+                        <span className="text-3xl">🔐</span>
+                    </div>
+                    <p className="text-gray-600">Loading...</p>
+                </div>
+            </div>
+        }>
+            <AuthCallbackContent />
+        </Suspense>
+    );
+}
+
