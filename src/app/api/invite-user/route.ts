@@ -25,12 +25,17 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        if (!email.endsWith('@gmail.com')) {
+        // Validate email domain
+        const isGmail = email.endsWith('@gmail.com');
+        const isOrgEmail = email.endsWith('@aakb.org.in');
+
+        if (!isGmail && !isOrgEmail) {
             return NextResponse.json(
-                { error: 'Only Gmail addresses are allowed' },
+                { error: 'Only Gmail or @aakb.org.in addresses are allowed' },
                 { status: 400 }
             );
         }
+
 
         // Create the user in Supabase Auth
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
