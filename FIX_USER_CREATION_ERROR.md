@@ -1,49 +1,59 @@
-# Quick Fix for "Database error creating new user"
+# 🔍 Quick Fix: User Creation Error
 
-Run these queries in Supabase SQL Editor **in this order**:
+The error is likely due to one of these issues:
 
-## Step 1: Fix profiles table defaults
-```sql
--- Make sure role has a default value
-ALTER TABLE profiles ALTER COLUMN role SET DEFAULT 'worker';
+## Option 1: Service Role Key Missing
+Check your `.env.local` file has the **service_role** key (NOT anon key):
 
--- Make sure is_active has default
-ALTER TABLE profiles ALTER COLUMN is_active SET DEFAULT true;
-
--- Gmail can be null (will be set by trigger or API)
-ALTER TABLE profiles ALTER COLUMN gmail DROP NOT NULL;
+```env
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGc...  (starts with eyJ)
 ```
 
-## Step 2: Verify the fix
+Get it from: **Supabase Dashboard** → **Settings** → **API** → **service_role** (click to reveal)
+
+## Option 2: RLS Blocking Service Role
+
+Run this in Supabase SQL Editor:
+
 ```sql
-SELECT 
-    column_name,
-    data_type,
-    column_default,
-    is_nullable
-FROM information_schema.columns
-WHERE table_name = 'profiles'
-AND column_name IN ('gmail', 'role', 'is_active')
-ORDER BY column_name;
+-- Temporarily fix RLS policy for profiles
+DROP POLICY IF EXISTS "profiles_insert_policy" ON profiles;
+
+CREATE POLICY "profiles_insert_policy" ON profiles
+    FOR INSERT
+    WITH CHECK (
+        -- Allow service role (for user creation API)
+        current_setting('role') = 'service_role'
+        OR
+        -- Allow admins
+        EXISTS (
+            SELECT 1 FROM authorized_users
+            WHERE gmail = (SELECT email FROM auth.users WHERE id = auth.uid())
+            AND role = 'admin'
+            AND is_active = true
+        )
+    );
 ```
 
-Expected result:
-- `gmail`: nullable = YES
-- `role`: default = 'worker'::text, nullable = NO
-- `is_active`: default = true, nullable = NO
+## Option 3: Check Browser Console
 
-## Step 3: Test Adding a User
+1. Open your app
+2. Press **F12** (developer tools)
+3. Go to **Console** tab
+4. Try adding a user
+5. Copy the FULL error message and share it with me
 
-1. Go to Admin → Authorized Users
-2. Click "Add User"
-3. Fill in:
-   - Gmail: test@gmail.com
-   - Name: Test User
-   - Role: worker
-4. Click Add
+## Option 4: Check Supabase Logs
 
-Should work now! ✅
+1. Go to **Supabase Dashboard** → **Logs** → **Database**
+2. Look for recent errors
+3. Share the error details
 
-## If still getting errors:
+## Quick Test
 
-Check Supabase logs (Dashboard → Logs → Auth/Database) for the exact error message and share it with me.
+After adding service role key, restart your server:
+```bash
+npm run dev
+```
+
+Then try adding a user again!
