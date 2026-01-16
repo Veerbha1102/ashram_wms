@@ -16,6 +16,7 @@ const navItems = [
 const moreItems = [
     { href: '/admin/attendance', icon: '📅', label: 'Attendance' },
     { href: '/admin/reports', icon: '📈', label: 'Reports' },
+    { href: '/admin/authorized-users', icon: '🔐', label: 'Authorized Users' },
     { href: '/admin/settings', icon: '⚙️', label: 'Settings' },
 ];
 
