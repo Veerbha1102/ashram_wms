@@ -20,10 +20,15 @@ export default function ForgotPasswordPage() {
             return;
         }
 
-        if (!email.endsWith('@gmail.com')) {
-            setError('Only Gmail accounts are allowed');
+
+        const isGmail = email.endsWith('@gmail.com');
+        const isOrgEmail = email.endsWith('@aakb.org.in');
+
+        if (!isGmail && !isOrgEmail) {
+            setError('Only Gmail or @aakb.org.in addresses are allowed');
             return;
         }
+
 
         setLoading(true);
 

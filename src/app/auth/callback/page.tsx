@@ -36,13 +36,17 @@ function AuthCallbackContent() {
 
             const email = session.user.email;
 
-            // Check if email is Gmail
-            if (!email.endsWith('@gmail.com')) {
+            // Check if email is from allowed domains
+            const isGmail = email.endsWith('@gmail.com');
+            const isOrgEmail = email.endsWith('@aakb.org.in');
+
+            if (!isGmail && !isOrgEmail) {
                 await supabase.auth.signOut();
-                setError('Only Gmail accounts are allowed. Please use your Gmail account.');
+                setError('Only Gmail or @aakb.org.in accounts are allowed.');
                 setTimeout(() => router.push('/login'), 3000);
                 return;
             }
+
 
             // Check if user is authorized
             const authUser = await checkAuthorization(email);

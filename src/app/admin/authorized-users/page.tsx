@@ -58,10 +58,15 @@ export default function AuthorizedUsersPage() {
             return;
         }
 
-        if (!newUser.gmail.endsWith('@gmail.com')) {
-            showNotification('error', 'Only Gmail addresses are allowed');
+
+        const isGmail = newUser.gmail.endsWith('@gmail.com');
+        const isOrgEmail = newUser.gmail.endsWith('@aakb.org.in');
+
+        if (!isGmail && !isOrgEmail) {
+            showNotification('error', 'Only Gmail or @aakb.org.in addresses are allowed');
             return;
         }
+
 
         try {
             const response = await fetch('/api/invite-user', {
