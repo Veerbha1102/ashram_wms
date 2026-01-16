@@ -4,6 +4,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase';
+import { getCurrentUser, signOut } from '@/lib/auth';
 
 const navItems = [
     { href: '/admin', icon: '📊', label: 'Dashboard' },
@@ -23,6 +24,8 @@ const moreItems = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const [pendingLeaves, setPendingLeaves] = useState(0);
     const [showMore, setShowMore] = useState(false);
+    const [userName, setUserName] = useState('Admin');
+    const [loading, setLoading] = useState(true);
     const pathname = usePathname();
     const router = useRouter();
     const supabase = createClient();
@@ -33,10 +36,32 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }, []);
 
     async function checkAuth() {
-        const token = localStorage.getItem('aakb_device_token');
-        if (!token) { router.push('/login'); return; }
-        const { data } = await supabase.from('profiles').select('role').eq('device_token', token).single();
-        if (!data || data.role !== 'admin') router.push('/login');
+        try {
+            const user = await getCurrentUser();
+
+            if (!user) {
+                router.push('/login');
+                return;
+            }
+
+            // Check if user has admin or manager role
+            if (user.role !== 'admin' && user.role !== 'manager') {
+                // Redirect based on role
+                if (user.role === 'swamiji') {
+                    router.push('/swamiji');
+                } else {
+                    router.push('/worker');
+                }
+                return;
+            }
+
+            setUserName(user.full_name);
+        } catch (error) {
+            console.error('Auth error:', error);
+            router.push('/login');
+        } finally {
+            setLoading(false);
+        }
     }
 
     async function loadBadges() {
@@ -47,9 +72,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         setPendingLeaves(count || 0);
     }
 
-    function handleLogout() {
-        localStorage.removeItem('aakb_device_token');
-        router.push('/login');
+    async function handleLogout() {
+        try {
+            await signOut();
+            router.push('/login');
+        } catch (error) {
+            console.error('Logout error:', error);
+            router.push('/login');
+        }
+    }
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading...</p>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -63,12 +104,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         </div>
                         <div>
                             <h1 className="font-bold text-gray-900">🛡️ Admin Panel</h1>
-                            <p className="text-xs text-gray-500">{new Date().toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}</p>
+                            <p className="text-xs text-gray-500">{userName}</p>
                         </div>
                     </div>
                     <button
                         onClick={handleLogout}
-                        className="p-2 text-gray-500 hover:text-red-500"
+                        className="p-2 text-gray-500 hover:text-red-500 transition-colors"
+                        title="Logout"
                     >
                         🚪
                     </button>
