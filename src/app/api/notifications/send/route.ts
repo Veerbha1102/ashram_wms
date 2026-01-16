@@ -2,15 +2,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import * as admin from 'firebase-admin';
 
-// Initialize Firebase Admin SDK
-if (!admin.apps.length) {
-    const serviceAccount = JSON.parse(
-        process.env.FIREBASE_ADMIN_SDK_JSON || '{}'
-    );
+// Initialize Firebase Admin SDK (skip if not configured)
+let firebaseInitialized = false;
+if (!admin.apps.length && process.env.FIREBASE_ADMIN_SDK_JSON) {
+    try {
+        const serviceAccount = JSON.parse(process.env.FIREBASE_ADMIN_SDK_JSON);
 
-    admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-    });
+        if (serviceAccount.project_id) {
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount),
+            });
+            firebaseInitialized = true;
+        }
+    } catch (error) {
+        console.warn('Firebase Admin SDK not initialized:', error);
+    }
+} else if (admin.apps.length > 0) {
+    firebaseInitialized = true;
 }
 
 // Server-side Supabase client
@@ -20,6 +28,14 @@ const supabaseAdmin = createClient(
 );
 
 export async function POST(request: NextRequest) {
+    // Check if Firebase is configured
+    if (!firebaseInitialized) {
+        return NextResponse.json(
+            { error: 'Push notifications not configured. Please set up Firebase.' },
+            { status: 503 }
+        );
+    }
+
     try {
         const { userId, title, body, data, type = 'info' } = await request.json();
 
