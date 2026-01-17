@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase';
+import Link from 'next/link';
 
 interface Worker {
     id: string;
@@ -235,6 +236,12 @@ export default function WorkersPage() {
 
                             {/* Card Actions */}
                             <div className="p-4">
+                                <Link
+                                    href={`/admin/workers/${worker.id}`}
+                                    className="block w-full py-2 mb-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-center rounded-xl font-medium hover:shadow-lg transition"
+                                >
+                                    📊 View All Data
+                                </Link>
                                 <div className="flex gap-2">
                                     <button
                                         onClick={() => openEditModal(worker)}
