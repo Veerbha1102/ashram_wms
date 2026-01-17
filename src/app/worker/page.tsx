@@ -162,37 +162,57 @@ export default function WorkerDashboard() {
             return;
         }
 
-        const now = new Date();
-        setStartTime(now);
-        setWorkState('WORKING');
+        try {
+            const deviceId = localStorage.getItem('aakb_device_fingerprint');
+            const response = await fetch('/api/attendance/start-day', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    worker_id: worker.id,
+                    device_id: deviceId,
+                    device_type: 'laptop'
+                })
+            });
 
-        const today = now.toISOString().split('T')[0];
-        const { data } = await supabase.from('attendance').upsert({
-            worker_id: worker.id,
-            date: today,
-            check_in_time: now.toISOString(),
-            status: isLate ? 'late' : 'present',
-        }, { onConflict: 'worker_id,date' }).select().single();
-        if (data) setAttendanceId(data.id);
+            const data = await response.json();
+            if (!response.ok) {
+                alert('❌ ' + (data.error || 'Failed to start day'));
+                return;
+            }
+
+            const now = new Date();
+            setStartTime(now);
+            setWorkState('WORKING');
+            if (data.attendance?.id) setAttendanceId(data.attendance.id);
+        } catch (err: any) {
+            alert('❌ Error starting day: ' + err.message);
+        }
     }
 
     async function handleModeChange(mode: 'WORKING' | 'FIELD_MODE' | 'EVENT_MODE') {
-        setWorkState(mode);
-        const statusValue = mode === 'FIELD_MODE' ? 'field' : mode === 'EVENT_MODE' ? 'event' : 'present';
+        if (!worker) return;
 
-        if (attendanceId) {
-            await supabase.from('attendance').update({
-                status: statusValue,
-                mode_changed_at: new Date().toISOString()
-            }).eq('id', attendanceId);
-
-            // Log this mode change for Swamiji notifications
-            await supabase.from('activity_log').insert({
-                worker_id: worker?.id,
-                action: mode === 'FIELD_MODE' ? 'field_mode' : mode === 'EVENT_MODE' ? 'event_mode' : 'working',
-                description: mode === 'FIELD_MODE' ? 'Switched to Field Mode' : mode === 'EVENT_MODE' ? 'Switched to Event Duty' : 'Returned to Office',
-                created_at: new Date().toISOString()
+        try {
+            const newMode = mode === 'FIELD_MODE' ? 'field' : mode === 'EVENT_MODE' ? 'event' : 'office';
+            const response = await fetch('/api/attendance/switch-mode', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    worker_id: worker.id,
+                    new_mode: newMode,
+                    notes: mode === 'FIELD_MODE' ? 'On field duty' : mode === 'EVENT_MODE' ? 'Event duty' : 'Back in office'
+                })
             });
+
+            const data = await response.json();
+            if (!response.ok) {
+                alert('❌ ' + (data.error || 'Failed to switch mode'));
+                return;
+            }
+
+            setWorkState(mode);
+        } catch (err: any) {
+            alert('❌ Error: ' + err.message);
         }
     }
 
@@ -216,16 +236,26 @@ export default function WorkerDashboard() {
     }
 
     async function confirmEndDay() {
-        if (!attendanceId) return;
-        const now = new Date();
-        const hoursWorked = elapsedSeconds / 3600;
-        let finalStatus = 'completed';
-        if (hoursWorked < 8) finalStatus = earlyExitApproved ? 'early_approved' : 'undertime';
-        else if (hoursWorked > 10) finalStatus = 'overtime';
+        if (!worker) return;
 
-        await supabase.from('attendance').update({ check_out_time: now.toISOString(), status: finalStatus }).eq('id', attendanceId);
-        setWorkState('ENDED');
-        setShowEndDayModal(false);
+        try {
+            const response = await fetch('/api/attendance/end-day', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ worker_id: worker.id })
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                alert('❌ ' + (data.error || 'Failed to end day'));
+                return;
+            }
+
+            setWorkState('ENDED');
+            setShowEndDayModal(false);
+        } catch (err: any) {
+            alert('❌ Error: ' + err.message);
+        }
     }
 
     function formatTime(seconds: number): string {
