@@ -18,6 +18,7 @@ const moreItems = [
     { href: '/admin/attendance', icon: '📅', label: 'Attendance' },
     { href: '/admin/reports', icon: '📈', label: 'Reports' },
     { href: '/admin/authorized-users', icon: '🔐', label: 'Authorized Users' },
+    { href: '/admin/kiosk', icon: '🖥️', label: 'Kiosk Setup' },
     { href: '/admin/settings', icon: '⚙️', label: 'Settings' },
 ];
 
