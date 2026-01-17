@@ -140,25 +140,30 @@ export default function AuthorizedUsersPage() {
     }
 
     async function handleDeleteUser(userId: string, gmail: string) {
-        if (!confirm(`Are you sure you want to remove ${gmail} from authorized users?`)) {
+        if (!confirm(`Are you sure you want to PERMANENTLY DELETE ${gmail}? This will remove them from auth, profiles, and all their data.`)) {
             return;
         }
 
         try {
-            const { error } = await supabase
-                .from('authorized_users')
-                .delete()
-                .eq('id', userId);
+            const response = await fetch(`/api/delete-user?userId=${userId}&email=${gmail}`, {
+                method: 'DELETE',
+            });
 
-            if (error) throw error;
+            const data = await response.json();
 
-            showNotification('success', 'User removed successfully');
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to delete user');
+            }
+
+            showNotification('success', 'User completely deleted from system');
             fetchUsers();
         } catch (error: any) {
             console.error('Error deleting user:', error);
-            showNotification('error', 'Failed to remove user');
+            showNotification('error', error.message || 'Failed to delete user');
         }
     }
+
+
 
     function showNotification(type: 'success' | 'error', message: string) {
         setNotification({ type, message });
