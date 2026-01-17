@@ -60,8 +60,18 @@ export default function SwamijiDashboard() {
 
         checkAuth();
         loadData();
-        const interval = setInterval(loadData, 10000); // Check every 10 seconds
-        return () => clearInterval(interval);
+
+        // Realtime sync - instant updates when workers change
+        const channel = supabase
+            .channel('swamiji-sync')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance' }, () => loadData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => loadData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'time_logs' }, () => loadData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'leaves' }, () => loadData())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications' }, () => loadData())
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
     }, []);
 
     function showNotification(title: string, body: string, icon: string = '🔔') {

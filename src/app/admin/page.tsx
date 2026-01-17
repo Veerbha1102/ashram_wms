@@ -21,6 +21,18 @@ export default function AdminDashboard() {
     useEffect(() => {
         checkAuth();
         loadStats();
+
+        // Realtime sync - refresh when data changes
+        const channel = supabase
+            .channel('admin-sync')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance' }, () => loadStats())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, () => loadStats())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => loadStats())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'leaves' }, () => loadStats())
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'time_logs' }, () => loadStats())
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
     }, []);
 
     async function checkAuth() {
