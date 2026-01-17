@@ -15,12 +15,20 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: NextRequest) {
     try {
-        const { email, full_name, role, password } = await request.json();
+        const { email, full_name, role, password, phone } = await request.json();
 
         // Validate input
-        if (!email || !full_name || !role) {
+        if (!email || !full_name || !role || !password || !phone) {
             return NextResponse.json(
-                { error: 'Email, full name, and role are required' },
+                { error: 'Email, full name, role, password, and phone are required' },
+                { status: 400 }
+            );
+        }
+
+        // Validate password length
+        if (password.length < 6) {
+            return NextResponse.json(
+                { error: 'Password must be at least 6 characters' },
                 { status: 400 }
             );
         }
@@ -40,11 +48,12 @@ export async function POST(request: NextRequest) {
         // Create the user in Supabase Auth
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
             email,
-            password: password || Math.random().toString(36).slice(-12), // Generate random password if not provided
+            password: password,
             email_confirm: true, // Auto-confirm email
             user_metadata: {
                 full_name: full_name,
                 role: role,
+                phone: phone,
             }
         });
 
@@ -77,8 +86,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Create profile (will be auto-created by trigger, but we do it explicitly for safety)
-        // Use upsert to avoid conflicts
+        // Create profile with all required fields
         const { error: profileError } = await supabaseAdmin
             .from('profiles')
             .upsert({
@@ -86,7 +94,7 @@ export async function POST(request: NextRequest) {
                 gmail: email.toLowerCase(),
                 name: full_name,
                 role: role,
-                phone: email,
+                phone: phone,
                 is_active: true,
             }, {
                 onConflict: 'id'
@@ -98,12 +106,7 @@ export async function POST(request: NextRequest) {
             // Just log it
         }
 
-        // Send password reset email so user can set their own password
-        if (!password) {
-            await supabaseAdmin.auth.resetPasswordForEmail(email, {
-                redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/reset-password`,
-            });
-        }
+        // No need to send password reset email since we set the password directly
 
         return NextResponse.json({
             success: true,

@@ -25,7 +25,9 @@ export default function AuthorizedUsersPage() {
     const [newUser, setNewUser] = useState({
         gmail: '',
         full_name: '',
-        role: 'worker'
+        role: 'worker',
+        password: '',
+        phone: ''
     });
 
     const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
@@ -53,8 +55,8 @@ export default function AuthorizedUsersPage() {
     }
 
     async function handleAddUser() {
-        if (!newUser.gmail || !newUser.full_name) {
-            showNotification('error', 'Please fill all required fields');
+        if (!newUser.gmail || !newUser.full_name || !newUser.password || !newUser.phone) {
+            showNotification('error', 'Please fill all required fields (Email, Name, Phone, Password)');
             return;
         }
 
@@ -76,6 +78,8 @@ export default function AuthorizedUsersPage() {
                     email: newUser.gmail.toLowerCase().trim(),
                     full_name: newUser.full_name.trim(),
                     role: newUser.role,
+                    password: newUser.password,
+                    phone: newUser.phone.trim(),
                 }),
             });
 
@@ -91,9 +95,9 @@ export default function AuthorizedUsersPage() {
                 description: `New authorized user invited: ${newUser.gmail} (${newUser.role})`,
             });
 
-            showNotification('success', 'User invited! They will receive a password reset email.');
+            showNotification('success', 'User created successfully!');
             setShowAddModal(false);
-            setNewUser({ gmail: '', full_name: '', role: 'worker' });
+            setNewUser({ gmail: '', full_name: '', role: 'worker', password: '', phone: '' });
             fetchUsers();
         } catch (error: any) {
             console.error('Error inviting user:', error);
@@ -361,11 +365,33 @@ export default function AuthorizedUsersPage() {
                                     <option value="admin">Admin</option>
                                 </select>
                             </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number *</label>
+                                <input
+                                    type="tel"
+                                    value={newUser.phone}
+                                    onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })}
+                                    placeholder="+91 98765 43210"
+                                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Password *</label>
+                                <input
+                                    type="password"
+                                    value={newUser.password}
+                                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                                    placeholder="Minimum 6 characters"
+                                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none"
+                                />
+                            </div>
                         </div>
 
                         <div className="flex gap-3 mt-6">
                             <button
-                                onClick={() => { setShowAddModal(false); setNewUser({ gmail: '', full_name: '', role: 'worker' }); }}
+                                onClick={() => { setShowAddModal(false); setNewUser({ gmail: '', full_name: '', role: 'worker', password: '', phone: '' }); }}
                                 className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-all"
                             >
                                 Cancel
