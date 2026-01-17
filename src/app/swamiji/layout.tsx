@@ -6,9 +6,9 @@ import { createClient } from '@/lib/supabase';
 
 const navItems = [
     { href: '/swamiji', icon: '🏠', label: 'Home' },
+    { href: '/swamiji/notifications', icon: '🔔', label: 'Alerts' },
     { href: '/swamiji/tasks', icon: '📋', label: 'Tasks' },
     { href: '/swamiji/leave', icon: '🏖️', label: 'Leave' },
-    { href: '/swamiji/alerts', icon: '🔔', label: 'Alerts' },
 ];
 
 export default function SwamijiLayout({ children }: { children: React.ReactNode }) {
