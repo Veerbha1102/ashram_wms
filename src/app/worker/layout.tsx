@@ -52,13 +52,13 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
     }
 
     async function loadBadges() {
-        const token = localStorage.getItem('aakb_device_token');
-        if (!token) return;
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user?.id) return;
 
         const { data: profile } = await supabase
             .from('profiles')
             .select('id')
-            .eq('device_token', token)
+            .eq('id', session.user.id)
             .single();
 
         if (profile) {
@@ -73,8 +73,8 @@ export default function WorkerLayout({ children }: { children: React.ReactNode }
         }
     }
 
-    function handleLogout() {
-        localStorage.removeItem('aakb_device_token');
+    async function handleLogout() {
+        await supabase.auth.signOut();
         router.push('/login');
     }
 

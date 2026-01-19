@@ -122,14 +122,22 @@ export default function AuthorizedUsersPage() {
         }
     }
 
-    async function handleUpdateRole(userId: string, newRole: string) {
+    async function handleUpdateRole(userId: string, newRole: string, email: string) {
         try {
-            const { error } = await supabase
+            // Update authorized_users
+            const { error: authError } = await supabase
                 .from('authorized_users')
                 .update({ role: newRole })
                 .eq('id', userId);
 
-            if (error) throw error;
+            if (authError) throw authError;
+
+            // Also update entry in profiles if it exists (by email)
+            // This is a backup in case the DB trigger fails or is delayed/RLS limited
+            await supabase
+                .from('profiles')
+                .update({ role: newRole })
+                .eq('gmail', email);
 
             showNotification('success', 'Role updated successfully');
             fetchUsers();
@@ -289,7 +297,7 @@ export default function AuthorizedUsersPage() {
                                         <td className="px-6 py-4">
                                             <select
                                                 value={user.role}
-                                                onChange={(e) => handleUpdateRole(user.id, e.target.value)}
+                                                onChange={(e) => handleUpdateRole(user.id, e.target.value, user.gmail)}
                                                 className={`px-3 py-1 rounded-full text-xs font-semibold ${roleColors[user.role]}`}
                                             >
                                                 <option value="admin">Admin</option>

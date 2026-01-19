@@ -6,47 +6,48 @@ import { createClient } from '@/lib/supabase';
 
 export default function Home() {
   const router = useRouter();
-  const [status, setStatus] = useState('Verifying Device...');
+  const [status, setStatus] = useState('Verifying Session...');
 
   useEffect(() => {
-    checkDevice();
+    checkSession();
   }, []);
 
-  async function checkDevice() {
-    const token = localStorage.getItem('aakb_device_token');
+  async function checkSession() {
+    const supabase = createClient();
 
-    if (!token) {
-      setStatus('No device registered. Redirecting...');
+    // Use Supabase Auth session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+    if (!session?.user?.id) {
+      setStatus('No session found. Redirecting...');
       setTimeout(() => router.push('/login'), 500);
       return;
     }
 
-    setStatus('Checking device authorization...');
+    setStatus('Checking authorization...');
 
     try {
-      const supabase = createClient();
-
       const { data, error } = await supabase
         .from('profiles')
         .select('role')
-        .eq('device_token', token)
+        .eq('id', session.user.id)
         .single();
 
       if (error || !data) {
-        localStorage.removeItem('aakb_device_token');
-        setStatus('Device not recognized. Redirecting...');
+        await supabase.auth.signOut();
+        setStatus('Profile not found. Redirecting...');
         setTimeout(() => router.push('/login'), 500);
       } else {
         setStatus(`Welcome! Redirecting to ${data.role} dashboard...`);
         setTimeout(() => {
           if (data.role === 'worker') router.push('/worker');
-          else if (data.role === 'admin') router.push('/admin');
+          else if (data.role === 'admin' || data.role === 'manager') router.push('/admin');
           else if (data.role === 'swamiji') router.push('/swamiji');
           else router.push('/login');
         }, 500);
       }
     } catch (err) {
-      console.error('Error verifying device:', err);
+      console.error('Error verifying session:', err);
       setStatus('Connection error. Redirecting to login...');
       setTimeout(() => router.push('/login'), 1000);
     }

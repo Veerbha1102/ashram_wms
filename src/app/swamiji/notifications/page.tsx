@@ -45,16 +45,10 @@ export default function SwamijiNotificationsPage() {
     }, [userId]);
 
     async function loadUser() {
-        const token = localStorage.getItem('aakb_device_token');
-        if (!token) return;
-
-        const { data } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('device_token', token)
-            .single();
-
-        if (data) setUserId(data.id);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.id) {
+            setUserId(session.user.id);
+        }
     }
 
     async function loadNotifications() {

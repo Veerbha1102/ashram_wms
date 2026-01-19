@@ -132,9 +132,9 @@ export default function SwamijiDashboard() {
     }, [tasks, worker]);
 
     async function checkAuth() {
-        const token = localStorage.getItem('aakb_device_token');
-        if (!token) { router.push('/login'); return; }
-        const { data } = await supabase.from('profiles').select('role').eq('device_token', token).single();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user?.id) { router.push('/login'); return; }
+        const { data } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
         if (!data || data.role !== 'swamiji') router.push('/login');
     }
 

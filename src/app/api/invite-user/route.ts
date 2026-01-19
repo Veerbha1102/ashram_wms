@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Create profile with all required fields
+        // Create profile with all required fields
         const { error: profileError } = await supabaseAdmin
             .from('profiles')
             .upsert({
@@ -96,9 +97,16 @@ export async function POST(request: NextRequest) {
                 role: role,
                 phone: phone,
                 is_active: true,
+                updated_at: new Date().toISOString()
             }, {
                 onConflict: 'id'
             });
+
+        // Also update authorized_users with user_id to link them
+        await supabaseAdmin
+            .from('authorized_users')
+            .update({ user_id: authData.user.id })
+            .eq('gmail', email.toLowerCase());
 
         if (profileError) {
             console.error('Profile creation error:', profileError);

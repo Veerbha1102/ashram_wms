@@ -99,12 +99,24 @@ export default function WorkerDashboard() {
     }
 
     async function loadWorkerData() {
-        const token = localStorage.getItem('aakb_device_token');
-        if (!token) { router.push('/login'); return; }
-
         try {
-            const { data, error } = await supabase.from('profiles').select('id, name, role').eq('device_token', token).single();
-            if (error || !data || data.role !== 'worker') { router.push('/login'); return; }
+            // Use Supabase Auth session
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.user?.id) {
+                router.push('/login');
+                return;
+            }
+
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('id, name, role')
+                .eq('id', session.user.id)
+                .single();
+
+            if (error || !data || data.role !== 'worker') {
+                router.push('/login');
+                return;
+            }
 
             setWorker(data);
             const today = new Date().toISOString().split('T')[0];

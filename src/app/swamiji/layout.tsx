@@ -26,9 +26,9 @@ export default function SwamijiLayout({ children }: { children: React.ReactNode 
     }, []);
 
     async function checkAuth() {
-        const token = localStorage.getItem('aakb_device_token');
-        if (!token) { router.push('/login'); return; }
-        const { data } = await supabase.from('profiles').select('role').eq('device_token', token).single();
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user?.id) { router.push('/login'); return; }
+        const { data } = await supabase.from('profiles').select('role').eq('id', session.user.id).single();
         if (!data || data.role !== 'swamiji') router.push('/login');
     }
 
@@ -51,8 +51,8 @@ export default function SwamijiLayout({ children }: { children: React.ReactNode 
         setPendingAlerts(alertCount || 0);
     }
 
-    function handleLogout() {
-        localStorage.removeItem('aakb_device_token');
+    async function handleLogout() {
+        await supabase.auth.signOut();
         router.push('/login');
     }
 
