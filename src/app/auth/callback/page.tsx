@@ -48,18 +48,33 @@ function AuthCallbackContent() {
             }
 
 
-            // Check if user is authorized
-            const authUser = await checkAuthorization(email);
+            // Check if user is authorized via Server API (Bypasses RLS issues)
+            const authResponse = await fetch('/api/auth/check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
 
-            if (!authUser) {
+            const authResult = await authResponse.json();
+
+            if (!authResponse.ok || !authResult.authorized) {
+                console.error('Authorization failed:', authResult.error);
                 await supabase.auth.signOut();
-                setError('This Gmail account is not authorized. Please contact the administrator.');
-                setTimeout(() => router.push('/login'), 3000);
+                setError(authResult.error || 'This account is not authorized. Contact administrator.');
+                setTimeout(() => router.push('/login'), 4000);
                 return;
             }
 
-            // Update last login
-            await updateLastLogin(email);
+            const authUser = authResult.user;
+
+            // Update last login AND link user_id if missing
+            await supabase
+                .from('authorized_users')
+                .update({
+                    last_login: new Date().toISOString(),
+                    user_id: session.user.id
+                })
+                .eq('gmail', email);
 
             // Sync with profiles table - get or create profile
             const { data: existingProfile } = await supabase
