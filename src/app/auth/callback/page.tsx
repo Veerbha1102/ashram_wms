@@ -88,33 +88,20 @@ function AuthCallbackContent() {
                 .eq('gmail', email);
 
             // Sync with profiles table - get or create profile
-            const { data: existingProfile } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('id', session.user.id)
-                .single();
+            // Sync with profiles table - upsert to prevent race conditions/duplicates
+            const profileData = {
+                id: session.user.id,
+                gmail: authUser.email,
+                name: authUser.full_name,
+                role: authUser.role,
+                phone: authUser.email, // using email as phone fallback for now
+                is_active: authUser.is_active,
+                // updated_at: new Date().toISOString(), // ensuring these fields exist in schema first, safe to omit if not sure
+            };
 
-            if (!existingProfile) {
-                // Create profile if doesn't exist
-                await supabase.from('profiles').insert({
-                    id: session.user.id,
-                    gmail: authUser.email,
-                    name: authUser.full_name,
-                    role: authUser.role,
-                    phone: authUser.email,
-                    is_active: authUser.is_active,
-                });
-            } else {
-                // Update profile to match authorized_users
-                await supabase.from('profiles')
-                    .update({
-                        gmail: authUser.email,
-                        name: authUser.full_name,
-                        role: authUser.role,
-                        is_active: authUser.is_active,
-                    })
-                    .eq('id', session.user.id);
-            }
+            await supabase
+                .from('profiles')
+                .upsert(profileData, { onConflict: 'id' });
 
             // Store user info in localStorage
             localStorage.setItem('aakb_user_role', authUser.role);
