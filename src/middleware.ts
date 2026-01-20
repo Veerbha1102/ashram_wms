@@ -9,31 +9,43 @@ export async function middleware(request: NextRequest) {
         },
     });
 
-    const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-            cookies: {
-                get(name: string) {
-                    return request.cookies.get(name)?.value;
+    let supabase;
+    try {
+        supabase = createServerClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            {
+                cookies: {
+                    get(name: string) {
+                        return request.cookies.get(name)?.value;
+                    },
+                    set(name: string, value: string, options: any) {
+                        response.cookies.set({
+                            name,
+                            value,
+                            ...options,
+                        });
+                    },
+                    remove(name: string, options: any) {
+                        response.cookies.set({
+                            name,
+                            value: '',
+                            ...options,
+                        });
+                    },
                 },
-                set(name: string, value: string, options: any) {
-                    response.cookies.set({
-                        name,
-                        value,
-                        ...options,
-                    });
-                },
-                remove(name: string, options: any) {
-                    response.cookies.set({
-                        name,
-                        value: '',
-                        ...options,
-                    });
-                },
-            },
+            }
+        );
+    } catch (e) {
+        // If env vars are missing, allow public routes but fail protected ones
+        console.error('Middleware Supabase Init Failed:', e);
+        const path = request.nextUrl.pathname;
+        const publicRoutes = ['/login', '/auth/callback', '/auth/forgot-password', '/auth/reset-password', '/api/auth/check'];
+        if (publicRoutes.includes(path)) {
+            return response;
         }
-    );
+        return NextResponse.redirect(new URL('/login?error=server_config', request.url));
+    }
 
     // Get authenticated user
     const { data: { user } } = await supabase.auth.getUser();
