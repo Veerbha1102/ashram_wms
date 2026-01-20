@@ -41,7 +41,7 @@ export async function middleware(request: NextRequest) {
     const path = request.nextUrl.pathname;
 
     // Public routes - no authentication needed
-    const publicRoutes = ['/login', '/auth/callback', '/auth/forgot-password', '/auth/reset-password'];
+    const publicRoutes = ['/login', '/auth/callback', '/auth/forgot-password', '/auth/reset-password', '/api/auth/check'];
 
     if (publicRoutes.includes(path)) {
         // If user is authenticated and trying to access login, redirect to appropriate dashboard
