@@ -3,19 +3,27 @@ import { createClient } from '@supabase/supabase-js';
 
 // Server-side Supabase client with service role key (admin privileges)
 // This bypasses RLS, ensuring we can accurately check if a user is authorized
-const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-        auth: {
-            autoRefreshToken: false,
-            persistSession: false
-        }
-    }
-);
-
 export async function POST(request: NextRequest) {
     try {
+        if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            console.error('SUPABASE_SERVICE_ROLE_KEY is not defined');
+            return NextResponse.json(
+                { error: 'Server configuration error: Missing Service Role Key' },
+                { status: 500 }
+            );
+        }
+
+        const supabaseAdmin = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY,
+            {
+                auth: {
+                    autoRefreshToken: false,
+                    persistSession: false
+                }
+            }
+        );
+
         const { email } = await request.json();
 
         if (!email) {
@@ -57,7 +65,7 @@ export async function POST(request: NextRequest) {
     } catch (error: any) {
         console.error('[Auth Check] Server error:', error);
         return NextResponse.json(
-            { error: 'Internal server error' },
+            { error: 'Internal server error: ' + error.message },
             { status: 500 }
         );
     }
