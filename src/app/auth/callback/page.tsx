@@ -48,58 +48,35 @@ function AuthCallbackContent() {
             }
 
 
-            // 1. Try Server API (Bypasses RLS - Best for robustness against strict RLS)
-            let authUser = null;
-            let usedFallback = false;
+            // STRICT SECURITY: Server-Side Check ONLY
+            // We do NOT use client-side fallback. If the server cannot verify, we deny access.
+            const authResponse = await fetch('/api/auth/check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+
+            const authResponseText = await authResponse.text();
+            let authResult;
 
             try {
-                const authResponse = await fetch('/api/auth/check', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email })
-                });
-
-                const authResponseText = await authResponse.text();
-                let authResult;
-
-                try {
-                    authResult = JSON.parse(authResponseText);
-                } catch (e) {
-                    console.warn('Server auth response was not JSON (likely 500/404). Falling back to client check.');
-                    usedFallback = true;
-                }
-
-                if (!usedFallback) {
-                    if (authResponse.ok && authResult.authorized) {
-                        authUser = authResult.user;
-                    } else if (authResult.error) {
-                        // Explicit denial from server
-                        throw new Error(authResult.error);
-                    } else {
-                        usedFallback = true;
-                    }
-                }
-            } catch (serverError) {
-                console.warn('Server auth check failed (network/config). Falling back to client check.', serverError);
-                usedFallback = true;
+                authResult = JSON.parse(authResponseText);
+            } catch (e) {
+                console.error('SERVER ERROR: Auth response was not JSON.', authResponseText);
+                throw new Error('Security Verification Failed: Server returned invalid response.');
             }
 
-            // 2. Fallback: Client-Side Check (Relies on proper RLS)
-            if (usedFallback) {
-                console.log('Using client-side RLS fallback for authorization...');
-                // We imported checkAuthorization from @/lib/auth
-                const clientAuthUser = await checkAuthorization(email);
-
-                if (clientAuthUser) {
-                    authUser = clientAuthUser;
-                } else {
-                    // Both failed
-                    await supabase.auth.signOut();
-                    setError('This account is not authorized. Please contact the administrator.');
-                    setTimeout(() => router.push('/login'), 4000);
-                    return;
-                }
+            if (!authResponse.ok || !authResult.authorized) {
+                console.error('Security verification refused:', authResult?.error || 'Unknown error');
+                // Explicitly sign out if server says no
+                await supabase.auth.signOut();
+                setError(authResult?.error || 'Security Check Failed: You are not authorized.');
+                setTimeout(() => router.push('/login'), 4000);
+                return;
             }
+
+            // If we are here, the secure server has explicitly authorized this user
+            const authUser = authResult.user;
 
             // Update last login AND link user_id if missing
             await supabase
